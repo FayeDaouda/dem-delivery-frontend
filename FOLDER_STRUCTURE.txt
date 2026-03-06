@@ -1,0 +1,212 @@
+```
+📁 STRUCTURE FRONTEND FLUTTER RESTRUCTURISÉE
+============================================
+
+lib/
+│
+├── 📄 main.dart                                (Entry point - setupDependencies)
+│
+├── 📁 core/                                    (Services & Configuration partagés)
+│   │
+│   ├── 📁 di/
+│   │   └── 📄 service_locator.dart            (GetIt - Injection dépendances)
+│   │       ├── AuthBloc, DeliveriesBloc, PassesCubit
+│   │       ├── Tous les Use Cases
+│   │       ├── Tous les Repositories
+│   │       └── SocketService
+│   │
+│   ├── 📁 services/
+│   │   └── 📄 socket_service.dart             (WebSocket temps réel)
+│   │       ├── SocketService (interface)
+│   │       ├── SocketServiceImpl
+│   │       ├── WebSocketEvent
+│   │       └── WebSocketEventType enum
+│   │
+│   ├── 📁 storage/
+│   │   └── 📄 secure_storage_service.dart    (Tokens & User data)
+│   │
+│   └── 📁 network/
+│       └── 📄 api_client.dart                 (Ancien - à remplacer progressivement)
+│
+├── 📁 features/                               (Domaines métier)
+│
+│   ├── 📁 auth/                              (Feature Authentification)
+│   │   │
+│   │   ├── 📁 domain/                        (Couche Métier)
+│   │   │   ├── 📁 entities/
+│   │   │   │   └── 📄 auth_user.dart         (AuthUser entity)
+│   │   │   │
+│   │   │   ├── 📁 repositories/
+│   │   │   │   └── 📄 auth_repository.dart   (Interface abstraite)
+│   │   │   │       └── login(), sendOtp(), verifyOtp(), logout()
+│   │   │   │
+│   │   │   └── 📁 usecases/
+│   │   │       └── 📄 auth_usecases.dart
+│   │   │           ├── LoginUseCase
+│   │   │           ├── SendOtpUseCase
+│   │   │           ├── VerifyOtpUseCase
+│   │   │           └── LogoutUseCase
+│   │   │
+│   │   ├── 📁 data/                         (Couche Données)
+│   │   │   ├── 📁 datasources/
+│   │   │   │   └── 📄 auth_remote_data_source.dart
+│   │   │   │       ├── AuthRemoteDataSource (interface)
+│   │   │   │       └── AuthRemoteDataSourceImpl (Dio calls)
+│   │   │   │
+│   │   │   ├── 📁 models/
+│   │   │   │   └── 📄 auth_user_model.dart
+│   │   │   │       └── AuthUserModel (fromJson, toJson)
+│   │   │   │
+│   │   │   └── 📁 repositories/
+│   │   │       └── 📄 auth_repository_impl.dart
+│   │   │           └── AuthRepositoryImpl (implémentation)
+│   │   │
+│   │   └── 📁 presentation/                 (Couche UI)
+│   │       └── 📁 bloc/
+│   │           ├── 📄 auth_bloc.dart
+│   │           ├── 📄 auth_event.dart
+│   │           │   ├── AuthLoginEvent
+│   │           │   ├── AuthSendOtpEvent
+│   │           │   ├── AuthVerifyOtpEvent
+│   │           │   └── AuthLogoutEvent
+│   │           └── 📄 auth_state.dart
+│   │               ├── AuthInitial
+│   │               ├── AuthLoading
+│   │               ├── AuthSuccess
+│   │               ├── AuthFailure
+│   │               └── AuthUnauthenticated
+│   │
+│   ├── 📁 deliveries/                       (Feature Livraisons)
+│   │   │
+│   │   ├── 📁 domain/
+│   │   │   ├── 📁 entities/
+│   │   │   │   └── 📄 delivery.dart          (Delivery entity)
+│   │   │   │
+│   │   │   ├── 📁 repositories/
+│   │   │   │   └── 📄 deliveries_repository.dart
+│   │   │   │
+│   │   │   └── 📁 usecases/
+│   │   │       └── 📄 deliveries_usecases.dart
+│   │   │           ├── FetchDeliveriesUseCase
+│   │   │           ├── GetDeliveryDetailsUseCase
+│   │   │           └── UpdateDeliveryStatusUseCase
+│   │   │
+│   │   ├── 📁 data/
+│   │   │   ├── 📁 datasources/
+│   │   │   │   └── 📄 deliveries_remote_data_source.dart
+│   │   │   │
+│   │   │   ├── 📁 models/
+│   │   │   │   └── 📄 delivery_model.dart
+│   │   │   │
+│   │   │   └── 📁 repositories/
+│   │   │       └── 📄 deliveries_repository_impl.dart
+│   │   │
+│   │   └── 📁 presentation/
+│   │       └── 📁 bloc/
+│   │           ├── 📄 deliveries_bloc.dart
+│   │           ├── 📄 deliveries_event.dart
+│   │           │   ├── FetchDeliveriesEvent
+│   │           │   ├── GetDeliveryDetailsEvent
+│   │           │   └── UpdateDeliveryStatusEvent
+│   │           └── 📄 deliveries_state.dart
+│   │               ├── DeliveriesLoading
+│   │               ├── DeliveriesLoaded
+│   │               ├── DeliveryDetailsLoaded
+│   │               ├── DeliveriesFailure
+│   │               └── DeliveryStatusUpdated
+│   │
+│   └── 📁 passes/                           (Feature Passes)
+│       │
+│       ├── 📁 domain/
+│       │   ├── 📁 entities/
+│       │   │   └── 📄 pass.dart              (Pass entity)
+│       │   │
+│       │   ├── 📁 repositories/
+│       │   │   └── 📄 passes_repository.dart
+│       │   │
+│       │   └── 📁 usecases/
+│       │       └── 📄 passes_usecases.dart
+│       │           ├── FetchAvailablePassesUseCase
+│       │           ├── FetchUserPassesUseCase
+│       │           ├── ActivatePassUseCase
+│       │           ├── DeactivatePassUseCase
+│       │           └── GetPassDetailsUseCase
+│       │
+│       ├── 📁 data/
+│       │   ├── 📁 datasources/
+│       │   │   └── 📄 passes_remote_data_source.dart
+│       │   │
+│       │   ├── 📁 models/
+│       │   │   └── 📄 pass_model.dart
+│       │   │
+│       │   └── 📁 repositories/
+│       │       └── 📄 passes_repository_impl.dart
+│       │
+│       └── 📁 presentation/
+│           └── 📁 cubit/                    (Cubit au lieu de BLoC)
+│               ├── 📄 passes_cubit.dart
+│               └── 📄 passes_state.dart
+│                   ├── PassesInitial
+│                   ├── PassesLoading
+│                   ├── AvailablePassesLoaded
+│                   ├── UserPassesLoaded
+│                   ├── PassDetailsLoaded
+│                   ├── PassActivated
+│                   └── PassesFailure
+│
+├── 📁 pages/                                 (Pages UI - Stateless + BLoC)
+│   ├── 📄 login_page_bloc.dart              ✅ NEW - Avec BLoC
+│   ├── 📄 login_page.dart                   ⚠️ OLD - À supprimer après migration
+│   ├── 📄 client_home_page.dart             ⏳ TODO - À migrer
+│   ├── 📄 livreur_home_page.dart            ⏳ TODO - À migrer
+│   ├── 📄 onboarding_page.dart
+│   └── 📄 splash_page.dart
+│
+├── 📁 widgets/                              (Widgets réutilisables)
+│   └── ... (Cards, Buttons, etc.)
+│
+├── 📁 themes/                               (Thèmes & Styles)
+│   └── ... (Colors, TextStyles, etc.)
+│
+├── 📁 models/                               ⚠️ ANCIEN (À intégrer dans features/)
+│   └── ... (À nettoyer)
+│
+├── 📁 services/                             ⚠️ ANCIEN (À migrer vers core/services)
+│   └── ... (À nettoyer)
+│
+└── 📁 navigation/                           (Navigation routing)
+    └── ... (Routes configuration)
+
+
+test/
+└── 📄 bloc_test_example.dart               (Exemples de tests BLoC)
+
+
+📚 Documentation/
+├── 📄 ARCHITECTURE.md                       (Explication détaillée)
+├── 📄 MIGRATION_GUIDE.md                    (Comment migrer les pages)
+├── 📄 QUICK_START.md                        (Guide rapide)
+├── 📄 IMPLEMENTATION_CHECKLIST.md           (Checklist de tâches)
+├── 📄 SUMMARY.md                            (Résumé complet)
+└── 📄 README_NEW.md                         (README mis à jour)
+
+
+Légende:
+--------
+✅ Complété
+⏳ À faire (Prêt)
+⚠️ À mettre à jour/supprimer
+📄 Fichier
+📁 Dossier
+
+
+STATISTIQUES:
+=============
+Total fichiers Flutter: ~60
+Fichiers domain layer: 9 (3 features × 3 fichiers)
+Fichiers data layer: 9 (3 features × 3 fichiers)
+Fichiers presentation: 6 (BLoC + Events + States)
+Fichiers core: 3 (DI + Socket + Storage)
+Fichiers documentation: 6
+Lignes de code: ~3500
+```
