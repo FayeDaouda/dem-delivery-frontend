@@ -1,3 +1,4 @@
+import '../../data/models/otp_dtos.dart';
 import '../repositories/auth_repository.dart';
 
 class LoginUseCase {
@@ -56,6 +57,23 @@ class CreateProfileUseCase {
       role: role,
       fullName: fullName,
       avatar: avatar,
+    );
+  }
+
+  /// Nouveau : Créer profil pour flux OTP-Only avec driverType
+  Future<CreateProfileResponse> createProfileOtp({
+    required String userId,
+    required String fullName,
+    required String password,
+    required DriverType driverType,
+    required String tempToken,
+  }) async {
+    return await repository.createProfileOtp(
+      userId: userId,
+      fullName: fullName,
+      password: password,
+      driverType: driverType,
+      tempToken: tempToken,
     );
   }
 }

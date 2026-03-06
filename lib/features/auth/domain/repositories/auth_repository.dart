@@ -1,3 +1,5 @@
+import '../../data/models/otp_dtos.dart';
+
 abstract class AuthRepository {
   Future<Map<String, dynamic>> login(String phone, String password);
   Future<Map<String, dynamic>> sendOtp(String phone);
@@ -9,6 +11,16 @@ abstract class AuthRepository {
     String? fullName,
     String? avatar,
   });
+
+  /// Nouveau : Créer profil pour flux OTP-Only avec driverType
+  Future<CreateProfileResponse> createProfileOtp({
+    required String userId,
+    required String fullName,
+    required String password,
+    required DriverType driverType,
+    required String tempToken,
+  });
+
   Future<void> logout();
   Future<String?> getAccessToken();
   Future<String?> getRole();

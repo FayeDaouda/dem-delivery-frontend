@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/otp_dtos.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -272,4 +273,56 @@ class AuthRepositoryImpl implements AuthRepository {
       debugPrint('❌ Erreur lors de la sauvegarde de la session: $e');
     }
   }
+
+  /// Nouvelle méthode: Créer profil pour flux OTP-Only avec driverType
+  @override
+  Future<CreateProfileResponse> createProfileOtp({
+    required String userId,
+    required String fullName,
+    required String password,
+    required DriverType driverType,
+    required String tempToken,
+  }) async {
+    try {
+      debugPrint('🎉 Calling remoteDataSource.createProfileOtp...');
+      
+      final response = await remoteDataSource.createProfileOtp(
+        userId: userId,
+        fullName: fullName,
+        password: password,
+        driverType: driverType,
+        tempToken: tempToken,
+      );
+
+      // Sauvegarder la session
+      await _saveSessionFromResponse(response.toJson(), fallbackPhone: null);
+
+      debugPrint('✅ Profile créé avec driverType: ${driverType.toShortString()}');
+      
+      return response;
+    } catch (e) {
+      debugPrint('❌ CREATE PROFILE OTP ERROR: $e');
+      rethrow;
+    }
+  }
+}
+
+extension CreateProfileResponseToJson on CreateProfileResponse {
+  Map<String, dynamic> toJson() => {
+        'message': message,
+        'data': {
+          'id': data.id,
+          'fullName': data.fullName,
+          'phone': data.phone,
+          'role': data.role,
+          'driverType': data.driverType,
+          'status': data.status,
+          'isVerified': data.isVerified,
+          'createdAt': data.createdAt,
+        },
+        'accessToken': accessToken,
+        'refreshToken': refreshToken,
+        'nextStep': nextStep,
+        'role': data.role,
+      };
 }

@@ -42,6 +42,7 @@ class AuthVerifyOtpEvent extends AuthEvent {
   List<Object?> get props => [phone, code];
 }
 
+/// Événement ancien (non-utilisé dans flux OTP-Only)
 class AuthCreateProfileEvent extends AuthEvent {
   final String phone;
   final String role;
@@ -57,6 +58,26 @@ class AuthCreateProfileEvent extends AuthEvent {
 
   @override
   List<Object?> get props => [phone, role, fullName, avatar];
+}
+
+/// Nouveau événement pour flux OTP-Only avec sélection MOTO/VTC
+class AuthCreateProfileOtpEvent extends AuthEvent {
+  final String userId;
+  final String fullName;
+  final String password;
+  final String driverType; // "MOTO" ou "VTC"
+  final String tempToken;
+
+  const AuthCreateProfileOtpEvent({
+    required this.userId,
+    required this.fullName,
+    required this.password,
+    required this.driverType,
+    required this.tempToken,
+  });
+
+  @override
+  List<Object?> get props => [userId, fullName, password, driverType, tempToken];
 }
 
 class AuthLogoutEvent extends AuthEvent {

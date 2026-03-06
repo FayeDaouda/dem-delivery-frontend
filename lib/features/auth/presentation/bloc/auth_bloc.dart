@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/models/otp_dtos.dart';
 import '../../domain/usecases/auth_usecases.dart';
 
 part 'auth_event.dart';
@@ -24,6 +25,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSendOtpEvent>(_onSendOtpEvent);
     on<AuthVerifyOtpEvent>(_onVerifyOtpEvent);
     on<AuthCreateProfileEvent>(_onCreateProfileEvent);
+    on<AuthCreateProfileOtpEvent>(_onCreateProfileOtpEvent);
     on<AuthLogoutEvent>(_onLogoutEvent);
   }
 
@@ -72,6 +74,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await verifyOtpUseCase(event.phone, event.code);
       print('🔍 VERIFY OTP RESPONSE: $response');
 
+      // Flux OTP-Only: Extraire userId et tempToken
+      final userId = response['userId']?.toString();
+      final tempToken = response['tempToken']?.toString();
+
+      // Ancien flux: Extraire role depuis tokens JWT
       final data = response['data'];
       final user = data is Map<String, dynamic> ? data['user'] : null;
       final role = response['role']?.toString() ??
@@ -81,14 +88,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           user is Map<String, dynamic> ? user['fullName']?.toString() : null;
 
       print('🔍 EXTRACTED ROLE: $role');
+      print('🔍 EXTRACTED userId: $userId, tempToken: $tempToken');
       print('🔍 USER DATA: $user');
 
+      // Cas 1: Ancien utilisateur - Retourner role JWT directement
       if (role != null && role.isNotEmpty) {
         emit(AuthSuccess(role: role, userName: userName));
-      } else {
+      }
+      // Cas 2: Nouveau utilisateur OTP-Only - Aller à étape profil
+      else if (userId != null && tempToken != null) {
+        emit(AuthOtpVerified(
+          phone: event.phone,
+          userId: userId,
+          tempToken: tempToken,
+        ));
+      }
+      // Fallback
+      else {
         emit(AuthOtpVerified(phone: event.phone));
       }
     } catch (e) {
+      print('❌ VERIFY OTP ERROR: $e');
       emit(AuthFailure(message: e.toString()));
     }
   }
@@ -114,6 +134,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthSuccess(role: role, userName: userName));
     } catch (e) {
       emit(AuthFailure(message: e.toString()));
+    }
+  }
+
+  /// Nouveau handler pour flux OTP-Only avec driverType (MOTO/VTC)
+  Future<void> _onCreateProfileOtpEvent(
+    AuthCreateProfileOtpEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      final driverTypeEnum = DriverTypeExtension.fromString(event.driverType);
+      
+      final response = await createProfileUseCase.createProfileOtp(
+        userId: event.userId,
+        fullName: event.fullName,
+        password: event.password,
+        driverType: driverTypeEnum,
+        tempToken: event.tempToken,
+      );
+
+      // Extraction des données de la réponse
+      final role = response.data.role;
+      final userName = response.data.fullName;
+      final driverType = response.data.driverType;
+
+      print('✅ PROFILE CRÉÉ: role=$role, driverType=$driverType');
+      
+      emit(AuthSuccess(
+        role: role,
+        userName: userName,
+        driverType: driverType,
+      ));
+    } catch (e) {
+      print('❌ CREATE PROFILE OTP ERROR: $e');
+      emit(AuthFailure(message: 'Erreur lors de la création du profil: $e'));
     }
   }
 

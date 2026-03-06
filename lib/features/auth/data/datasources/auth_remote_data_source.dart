@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../models/otp_dtos.dart';
+
 abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> login(String phone, String password);
   Future<Map<String, dynamic>> sendOtp(String phone);
@@ -13,6 +15,16 @@ abstract class AuthRemoteDataSource {
     String? fullName,
     String? avatar,
   });
+
+  /// Nouveau : Créer profil pour flux OTP-Only avec driverType
+  Future<CreateProfileResponse> createProfileOtp({
+    required String userId,
+    required String fullName,
+    required String password,
+    required DriverType driverType,
+    required String tempToken,
+  });
+
   Future<void> logout();
 }
 
@@ -36,8 +48,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return response.data;
       }
       throw Exception('Login failed with status ${response.statusCode}');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
     }
   }
 
@@ -54,8 +69,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return response.data;
       }
       throw Exception('Send OTP failed with status ${response.statusCode}');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
     }
   }
 
@@ -80,8 +98,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return normalized;
       }
       throw Exception('Verify OTP failed with status ${response.statusCode}');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
     }
   }
 
@@ -98,8 +119,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       throw Exception('Refresh failed with status ${response.statusCode}');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
     }
   }
 
@@ -156,21 +180,65 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       throw Exception(
           'Create profile failed with status ${response.statusCode}');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } catch (e) {
+      if (e is DioException) {
+              throw _handleDioException(e);
+      }
+      rethrow;
+    }
+  }
+
+  /// Nouveau : Créer profil pour flux OTP-Only avec driverType
+  @override
+  Future<CreateProfileResponse> createProfileOtp({
+    required String userId,
+    required String fullName,
+    required String password,
+    required DriverType driverType,
+    required String tempToken,
+  }) async {
+    try {
+      final dto = CreateProfileOtpDto(
+        userId: userId,
+        fullName: fullName,
+        password: password,
+        driverType: driverType,
+        tempToken: tempToken,
+      );
+
+      print(
+        '📤 [SIGNUP] POST /auth/otp/create-profile payload: ${dto.toJson()}',
+      );
+
+      final response = await dio.post(
+        '/auth/otp/create-profile',
+        data: dto.toJson(),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('🌐 CREATE PROFILE RAW RESPONSE: ${response.data}');
+        return CreateProfileResponse.fromJson(response.data);
+      }
+      throw Exception(
+        'Create profile failed with status ${response.statusCode}',
+      );
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
     }
   }
 
   @override
   Future<void> logout() async {
-    try {
-      await dio.post('/auth/logout');
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
+    // Logout est généralement côté client (clear local storage)
+    // Pas d'appel API backend requis pour OTP-only flow
+    // Cette implémentation peut être étendue si le backend le nécessite
+    return Future.value();
   }
 
-  String _handleDioException(DioException e) {
+  String _handleDioException(dynamic e) {
     if (e.response != null) {
       final data = e.response?.data;
       if (data is Map) {

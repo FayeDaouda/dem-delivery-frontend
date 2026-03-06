@@ -8,11 +8,15 @@ class SecureStorageService {
     required String accessToken,
     required String refreshToken,
     required String role,
+    String? driverType,
   }) async {
-    print('💾 SAVING TO STORAGE: role=$role');
+    print('💾 SAVING TO STORAGE: role=$role, driverType=$driverType');
     await _storage.write(key: 'accessToken', value: accessToken);
     await _storage.write(key: 'refreshToken', value: refreshToken);
     await _storage.write(key: 'role', value: role);
+    if (driverType != null) {
+      await _storage.write(key: 'driverType', value: driverType);
+    }
     print('✅ SAVED TO STORAGE SUCCESSFULLY');
   }
 
@@ -25,6 +29,9 @@ class SecureStorageService {
     print('📖 READING ROLE FROM STORAGE: $role');
     return role;
   }
+
+  Future<String?> getDriverType() async =>
+      await _storage.read(key: 'driverType');
 
   // User
   Future<void> saveUser({
