@@ -10,6 +10,7 @@ import 'pages/kyc_submission_page.dart';
 import 'pages/livreur_home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/onboarding_page.dart';
+import 'pages/profile_page.dart';
 import 'pages/signup_page.dart';
 import 'pages/splash_page.dart';
 
@@ -73,6 +74,7 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginPage(),
           '/signup': (context) => const SignupPage(),
           '/kycSubmission': (context) => const KycSubmissionPage(),
+          '/profile': (context) => const ProfilePage(),
           '/clientHome': (context) => ClientHomePage(
                 userName: userName,
               ),

@@ -30,8 +30,9 @@ class _ClientHomePageContent extends StatelessWidget {
         backgroundColor: const Color(0xFF2196F3),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _handleLogout(context),
+            icon: const Icon(Icons.account_circle),
+            tooltip: 'Mon Profil',
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
           ),
         ],
       ),
@@ -103,9 +104,9 @@ class _ClientHomePageContent extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _handleLogout(context),
+                onPressed: () => Navigator.pushNamed(context, '/profile'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: const Color(0xFF2196F3),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -114,10 +115,10 @@ class _ClientHomePageContent extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.logout, color: Colors.white),
+                    const Icon(Icons.account_circle, color: Colors.white),
                     const SizedBox(width: 8),
                     Text(
-                      'Déconnexion',
+                      'Mon Profil',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -131,11 +132,6 @@ class _ClientHomePageContent extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _handleLogout(BuildContext context) {
-    context.read<AuthBloc>().add(const AuthLogoutEvent());
-    Navigator.pushReplacementNamed(context, '/splash');
   }
 }
 

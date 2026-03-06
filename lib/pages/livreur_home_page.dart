@@ -360,9 +360,8 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
         // Home - current page
         break;
       case 2:
-        // Profile - Logout
-        context.read<AuthBloc>().add(const AuthLogoutEvent());
-        Navigator.pushReplacementNamed(context, '/splash');
+        // Profile - Navigate to profile page
+        Navigator.pushNamed(context, '/profile');
         break;
     }
   }
