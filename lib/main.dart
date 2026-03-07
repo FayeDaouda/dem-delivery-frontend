@@ -6,12 +6,14 @@ import 'core/di/service_locator.dart';
 import 'core/storage/secure_storage_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'pages/client_home_page.dart';
+import 'pages/driver_passes_purchase_page.dart';
+import 'pages/driver_vtc_home_page.dart';
 import 'pages/kyc_submission_page.dart';
 import 'pages/livreur_home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/onboarding_page.dart';
+import 'pages/otp_signup_page.dart';
 import 'pages/profile_page.dart';
-import 'pages/signup_page.dart';
 import 'pages/splash_page.dart';
 
 void main() async {
@@ -72,13 +74,21 @@ class MyApp extends StatelessWidget {
           '/splash': (context) => const SplashPage(),
           '/onboarding': (context) => const OnboardingPage(),
           '/login': (context) => const LoginPage(),
-          '/signup': (context) => const SignupPage(),
+          '/signup': (context) => const OtpSignupPage(),
           '/kycSubmission': (context) => const KycSubmissionPage(),
           '/profile': (context) => const ProfilePage(),
           '/clientHome': (context) => ClientHomePage(
                 userName: userName,
               ),
           '/livreurHome': (context) => const LivreurHomePage(),
+          '/driver/passes/purchase': (context) =>
+              const DriverPassesPurchasePage(),
+          '/driver/vtc/home': (context) => const DriverVtcHomePage(),
+          '/admin/home': (context) => const Scaffold(
+                body: Center(
+                  child: Text('Admin Dashboard - Coming Soon'),
+                ),
+              ),
         },
       ),
     );

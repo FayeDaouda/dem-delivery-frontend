@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../core/utils/navigation_helper.dart';
 import '../core/widgets/app_dialog.dart';
 import '../design_system/tokens/colors.dart';
 import '../design_system/tokens/spacing.dart';
-import '../features/auth/data/models/otp_dtos.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../widgets/driver_type_selector.dart';
 
@@ -173,33 +173,36 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
 
           // Gestion des réponses du backend après vérification OTP
           if (state is AuthSuccess && _currentStep == 2) {
-            // Si on reçoit une réponse avec rôle directement
-            // (ancienne user login via OTP)
-            Navigator.pushReplacementNamed(
-              context,
-              state.role == 'DRIVER' || state.role == 'LIVREUR'
-                  ? '/livreurHome'
-                  : '/clientHome',
+            // Si on reçoit AuthSuccess en step 2 = user existant qui se reconnecte
+            print('✅ [SIGNUP] User existant détecté - Redirect home');
+            
+            final route = NavigationHelper.getHomeRoute(
+              role: state.role,
+              driverType: state.driverType,
+              hasActivePass: state.hasActivePass,
             );
+            
+            Navigator.pushReplacementNamed(context, route);
             return;
           }
 
           // Étape 3: Profil créé avec succès
           if (state is AuthSuccess && _currentStep == 3) {
-            print(
-              '✅ Profile created successfully with driverType=${state.driverType}',
-            );
+            print('✅ [SIGNUP] Profil créé - driverType=${state.driverType}');
             AppDialog.showInfo(context, 'Bienvenue !');
 
-            // Rediriger vers home approprié
+            // Navigation conditionnelle avec NavigationHelper
             Future.delayed(const Duration(milliseconds: 500), () {
               if (!mounted) return;
-              Navigator.pushReplacementNamed(
-                context,
-                state.role == 'DRIVER' || state.role == 'LIVREUR'
-                    ? '/livreurHome'
-                    : '/clientHome',
+              
+              final route = NavigationHelper.getHomeRoute(
+                role: state.role,
+                driverType: state.driverType,
+                hasActivePass: state.hasActivePass,
               );
+              
+              print('🧭 [SIGNUP] Navigation vers: $route');
+              Navigator.pushReplacementNamed(context, route);
             });
             return;
           }
