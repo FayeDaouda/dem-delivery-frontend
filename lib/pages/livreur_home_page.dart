@@ -10,7 +10,6 @@ import '../core/di/service_locator.dart';
 import '../core/storage/secure_storage_service.dart';
 import '../design_system/components/glass_draggable_sheet.dart';
 import '../design_system/index.dart';
-import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/passes/presentation/bloc/pass_bloc.dart';
 import '../services/delivery_live_service.dart';
 import 'livreur_panels/active_pass_panel.dart';

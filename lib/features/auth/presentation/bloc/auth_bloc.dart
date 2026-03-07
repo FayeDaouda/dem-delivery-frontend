@@ -145,7 +145,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final driverTypeEnum = DriverTypeExtension.fromString(event.driverType);
-      
+
       final response = await createProfileUseCase.createProfileOtp(
         userId: event.userId,
         fullName: event.fullName,
@@ -160,7 +160,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final driverType = response.data.driverType;
 
       print('✅ PROFILE CRÉÉ: role=$role, driverType=$driverType');
-      
+
       emit(AuthSuccess(
         role: role,
         userName: userName,

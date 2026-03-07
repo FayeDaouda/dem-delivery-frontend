@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/di/service_locator.dart';
 import '../core/storage/secure_storage_service.dart';
-import '../features/auth/presentation/bloc/auth_bloc.dart';
 
 class ClientHomePage extends StatelessWidget {
   final String? userName;

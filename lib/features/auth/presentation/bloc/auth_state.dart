@@ -21,7 +21,7 @@ class AuthOtpSent extends AuthState {
 
 class AuthOtpVerified extends AuthState {
   final String phone;
-  final String? userId;    // Pour flux OTP-Only
+  final String? userId; // Pour flux OTP-Only
   final String? tempToken; // Pour flux OTP-Only
 
   const AuthOtpVerified({
@@ -37,7 +37,7 @@ class AuthOtpVerified extends AuthState {
 class AuthSuccess extends AuthState {
   final String role;
   final String? userName;
-  final String? driverType;  // MOTO ou VTC
+  final String? driverType; // MOTO ou VTC
 
   const AuthSuccess({
     required this.role,

@@ -89,30 +89,65 @@ class VerifyOtpDto {
   Map<String, dynamic> toJson() => {'phone': phone, 'code': code};
 }
 
+/// Réponse de vérification OTP - Gère 2 cas:
+/// CAS 1: Nouveau user → nextStep=CREATE_PROFILE, userId+tempToken fournis
+/// CAS 2: User existant → nextStep=COMPLETE, tokens+user data fournis
 class VerifyOtpResponse {
   final String message;
-  final String userId;
-  final String status;
   final String nextStep;
-  final String tempToken;
+
+  // Cas 1: Nouveau user (nextStep=CREATE_PROFILE)
+  final String? userId;
+  final String? tempToken;
+  final String? status;
+
+  // Cas 2: User existant (nextStep=COMPLETE)
+  final String? accessToken;
+  final String? refreshToken;
+  final UserProfileData? user;
 
   VerifyOtpResponse({
     required this.message,
-    required this.userId,
-    required this.status,
     required this.nextStep,
-    required this.tempToken,
+    this.userId,
+    this.tempToken,
+    this.status,
+    this.accessToken,
+    this.refreshToken,
+    this.user,
   });
 
+  /// Factory qui gère les 2 formats de réponse backend
   factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
+    final nextStep = json['nextStep'] as String? ?? 'UNKNOWN';
+
+    // CAS 1: Nouveau user (CREATE_PROFILE)
+    if (nextStep == 'CREATE_PROFILE') {
+      final data = json['data'] as Map<String, dynamic>?;
+      return VerifyOtpResponse(
+        message: json['message'] as String? ?? 'OTP verified',
+        nextStep: nextStep,
+        userId: data?['userId'] as String?,
+        tempToken: data?['tempToken'] as String?,
+        status: data?['status'] as String?,
+      );
+    }
+
+    // CAS 2: User existant (COMPLETE) - tokens directs
     return VerifyOtpResponse(
-      message: json['message'] as String,
-      userId: json['userId'] as String,
-      status: json['status'] as String? ?? 'PENDING_PROFILE',
-      nextStep: json['nextStep'] as String? ?? 'CREATE_PROFILE',
-      tempToken: json['tempToken'] as String,
+      message: json['message'] as String? ?? 'Login successful',
+      nextStep: nextStep,
+      accessToken: json['accessToken'] as String?,
+      refreshToken: json['refreshToken'] as String?,
+      user: json['user'] != null
+          ? UserProfileData.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
     );
   }
+
+  /// Helpers pour identifier le cas
+  bool get isNewUser => nextStep == 'CREATE_PROFILE';
+  bool get isExistingUser => nextStep == 'COMPLETE' || accessToken != null;
 }
 
 // ============================================================================
@@ -174,20 +209,22 @@ class UserProfileData {
   final String fullName;
   final String phone;
   final String role;
-  final String driverType;
+  final String? driverType; // Optionnel (seulement pour DRIVER)
   final String status;
   final bool isVerified;
-  final String createdAt;
+  final bool? hasActivePass; // Important pour navigation DRIVER
+  final String? createdAt;
 
   UserProfileData({
     required this.id,
     required this.fullName,
     required this.phone,
     required this.role,
-    required this.driverType,
+    this.driverType,
     required this.status,
     required this.isVerified,
-    required this.createdAt,
+    this.hasActivePass,
+    this.createdAt,
   });
 
   factory UserProfileData.fromJson(Map<String, dynamic> json) {
@@ -196,10 +233,41 @@ class UserProfileData {
       fullName: json['fullName'] as String,
       phone: json['phone'] as String,
       role: json['role'] as String,
-      driverType: json['driverType'] as String,
+      driverType: json['driverType'] as String?,
       status: json['status'] as String,
       isVerified: json['isVerified'] as bool? ?? false,
-      createdAt: json['createdAt'] as String,
+      hasActivePass: json['hasActivePass'] as bool?,
+      createdAt: json['createdAt'] as String?,
     );
+  }
+
+  /// Helper pour déterminer la page d'accueil
+  String get homeRoute {
+    if (role == 'CLIENT') return '/clientHome';
+
+    if (role == 'DRIVER') {
+      // Pas de pass actif → Achat pass
+      if (hasActivePass == false) {
+        return '/driver/passes/purchase';
+      }
+
+      // MOTO → Accueil livreur MOTO
+      if (driverType == 'MOTO') {
+        return '/livreurHome';
+      }
+
+      // VTC → Accueil VTC
+      if (driverType == 'VTC') {
+        return '/driver/vtc/home';
+      }
+
+      // Fallback DRIVER
+      return '/livreurHome';
+    }
+
+    if (role == 'ADMIN') return '/admin/home';
+
+    // Fallback général
+    return '/splash';
   }
 }

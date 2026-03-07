@@ -8,6 +8,7 @@ abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> login(String phone, String password);
   Future<Map<String, dynamic>> sendOtp(String phone);
   Future<Map<String, dynamic>> verifyOtp(String phone, String code);
+  Future<Map<String, dynamic>> resendOtp(String phone);
   Future<Map<String, dynamic>> refresh(String refreshToken);
   Future<Map<String, dynamic>> createProfile({
     required String phone,
@@ -107,6 +108,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> resendOtp(String phone) async {
+    try {
+      print('📤 [RESEND] POST /auth/resend-otp payload: {phone: $phone}');
+      final response = await dio.post(
+        '/auth/resend-otp',
+        data: {'phone': phone},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      }
+      throw Exception('Resend OTP failed with status ${response.statusCode}');
+    } catch (e) {
+      if (e is DioException) {
+        throw _handleDioException(e);
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>> refresh(String refreshToken) async {
     try {
       final response = await dio.post(
@@ -182,7 +204,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'Create profile failed with status ${response.statusCode}');
     } catch (e) {
       if (e is DioException) {
-              throw _handleDioException(e);
+        throw _handleDioException(e);
       }
       rethrow;
     }
