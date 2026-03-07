@@ -24,6 +24,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginEvent>(_onLoginEvent);
     on<AuthSendOtpEvent>(_onSendOtpEvent);
     on<AuthVerifyOtpEvent>(_onVerifyOtpEvent);
+    on<AuthResendOtpEvent>(_onResendOtpEvent);
     on<AuthCreateProfileEvent>(_onCreateProfileEvent);
     on<AuthCreateProfileOtpEvent>(_onCreateProfileOtpEvent);
     on<AuthLogoutEvent>(_onLogoutEvent);
@@ -65,6 +66,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onResendOtpEvent(
+    AuthResendOtpEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      // Utilise le même usecase que sendOtp (même endpoint backend)
+      await sendOtpUseCase(event.phone);
+      emit(const AuthOtpSent());
+    } catch (e) {
+      emit(AuthFailure(message: e.toString()));
+    }
+  }
+
   Future<void> _onVerifyOtpEvent(
     AuthVerifyOtpEvent event,
     Emitter<AuthState> emit,
@@ -72,43 +87,51 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final response = await verifyOtpUseCase(event.phone, event.code);
-      print('🔍 VERIFY OTP RESPONSE: $response');
+      print('🔍 [AUTH_BLOC] RAW VERIFY OTP RESPONSE: $response');
 
-      // Flux OTP-Only: Extraire userId et tempToken
-      final userId = response['userId']?.toString();
-      final tempToken = response['tempToken']?.toString();
+      // Parser avec DTO amélioré qui gère les 2 cas
+      final verifyResponse = VerifyOtpResponse.fromJson(response);
+      print('🔍 [AUTH_BLOC] nextStep: ${verifyResponse.nextStep}');
 
-      // Ancien flux: Extraire role depuis tokens JWT
-      final data = response['data'];
-      final user = data is Map<String, dynamic> ? data['user'] : null;
-      final role = response['role']?.toString() ??
-          (data is Map<String, dynamic> ? data['role']?.toString() : null) ??
-          (user is Map<String, dynamic> ? user['role']?.toString() : null);
-      final userName =
-          user is Map<String, dynamic> ? user['fullName']?.toString() : null;
-
-      print('🔍 EXTRACTED ROLE: $role');
-      print('🔍 EXTRACTED userId: $userId, tempToken: $tempToken');
-      print('🔍 USER DATA: $user');
-
-      // Cas 1: Ancien utilisateur - Retourner role JWT directement
-      if (role != null && role.isNotEmpty) {
-        emit(AuthSuccess(role: role, userName: userName));
-      }
-      // Cas 2: Nouveau utilisateur OTP-Only - Aller à étape profil
-      else if (userId != null && tempToken != null) {
+      // CAS 1: Nouveau user → Besoin de créer profil
+      if (verifyResponse.isNewUser) {
+        print(
+            '✅ [AUTH_BLOC] Nouveau user détecté - Redirect vers création profil');
         emit(AuthOtpVerified(
           phone: event.phone,
-          userId: userId,
-          tempToken: tempToken,
+          userId: verifyResponse.userId,
+          tempToken: verifyResponse.tempToken,
         ));
+        return;
       }
-      // Fallback
-      else {
-        emit(AuthOtpVerified(phone: event.phone));
+
+      // CAS 2: User existant → Login direct avec tokens
+      if (verifyResponse.isExistingUser && verifyResponse.user != null) {
+        print('✅ [AUTH_BLOC] User existant détecté - Login direct');
+
+        final user = verifyResponse.user!;
+        final driverType = user.driverType;
+
+        // Sauvegarder les tokens (fait dans le repository normalement)
+        // La navigation se fera selon user.homeRoute
+
+        emit(AuthSuccess(
+          role: user.role,
+          userName: user.fullName,
+          driverType: driverType,
+          userId: user.id,
+          hasActivePass: user.hasActivePass,
+        ));
+        return;
       }
+
+      // Fallback: Format inattendu
+      print('⚠️ [AUTH_BLOC] Format de réponse inattendu');
+      emit(const AuthFailure(
+        message: 'Format de réponse inattendu du serveur',
+      ));
     } catch (e) {
-      print('❌ VERIFY OTP ERROR: $e');
+      print('❌ [AUTH_BLOC] VERIFY OTP ERROR: $e');
       emit(AuthFailure(message: e.toString()));
     }
   }

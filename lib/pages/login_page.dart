@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../core/di/service_locator.dart';
-import '../core/storage/secure_storage_service.dart';
+import '../core/utils/navigation_helper.dart';
 import '../core/widgets/app_dialog.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -89,35 +88,26 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (state is AuthSuccess) {
-      if (state.role == 'CLIENT') {
-        Navigator.pushReplacementNamed(context, '/clientHome');
-      } else if (state.role == 'DRIVER' || state.role == 'LIVREUR') {
-        Navigator.pushReplacementNamed(context, '/livreurHome');
-      }
+      // Nouveau: Navigation conditionnelle basée sur user data
+      final route = NavigationHelper.getHomeRoute(
+        role: state.role,
+        driverType: state.driverType,
+        hasActivePass: state.hasActivePass,
+      );
+
+      print('✅ [LOGIN] Navigation vers: $route');
+      print('   - Role: ${state.role}');
+      print('   - DriverType: ${state.driverType}');
+      print('   - HasActivePass: ${state.hasActivePass}');
+
+      Navigator.pushReplacementNamed(context, route);
       return;
     }
 
     if (state is AuthOtpVerified) {
-      final storage = getIt<SecureStorageService>();
-      final role = await storage.getRole();
-      print('🔑 ROLE FROM STORAGE after OTP: $role');
-
-      if (!mounted) return;
-
-      if (role == 'CLIENT') {
-        print('✅ Redirecting to CLIENT home');
-        Navigator.pushReplacementNamed(context, '/clientHome');
-        return;
-      }
-
-      if (role == 'DRIVER' || role == 'LIVREUR') {
-        print('✅ Redirecting to DRIVER home');
-        Navigator.pushReplacementNamed(context, '/livreurHome');
-        return;
-      }
-
-      // OTP validé mais profil incomplet -> inscription
-      print('⚠️ No role found, redirecting to signup');
+      // Cas: User existant mais besoin de compléter profil (rare)
+      // Ou: Nouveau user → Rediriger vers signup
+      print('⚠️ [LOGIN] OTP vérifié mais profil incomplet → signup');
       Navigator.pushReplacementNamed(context, '/signup');
       return;
     }

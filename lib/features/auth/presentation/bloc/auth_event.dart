@@ -77,7 +77,17 @@ class AuthCreateProfileOtpEvent extends AuthEvent {
   });
 
   @override
-  List<Object?> get props => [userId, fullName, password, driverType, tempToken];
+  List<Object?> get props =>
+      [userId, fullName, password, driverType, tempToken];
+}
+
+class AuthResendOtpEvent extends AuthEvent {
+  final String phone;
+
+  const AuthResendOtpEvent({required this.phone});
+
+  @override
+  List<Object?> get props => [phone];
 }
 
 class AuthLogoutEvent extends AuthEvent {

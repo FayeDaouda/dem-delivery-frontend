@@ -38,15 +38,20 @@ class AuthSuccess extends AuthState {
   final String role;
   final String? userName;
   final String? driverType; // MOTO ou VTC
+  final String? userId; // ID utilisateur
+  final bool? hasActivePass; // Pour navigation driver (achat pass)
 
   const AuthSuccess({
     required this.role,
     this.userName,
     this.driverType,
+    this.userId,
+    this.hasActivePass,
   });
 
   @override
-  List<Object?> get props => [role, userName, driverType];
+  List<Object?> get props =>
+      [role, userName, driverType, userId, hasActivePass];
 }
 
 class AuthFailure extends AuthState {
