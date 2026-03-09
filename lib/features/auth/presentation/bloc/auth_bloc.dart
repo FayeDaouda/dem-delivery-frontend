@@ -167,20 +167,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      final driverTypeEnum = DriverTypeExtension.fromString(event.driverType);
+      final driverTypeEnum = event.driverType == null
+          ? null
+          : DriverTypeExtension.fromString(event.driverType!);
 
       final response = await createProfileUseCase.createProfileOtp(
-        userId: event.userId,
+        phone: event.phone,
         fullName: event.fullName,
-        password: event.password,
+        role: event.role,
         driverType: driverTypeEnum,
-        tempToken: event.tempToken,
+        avatarUrl: event.avatarUrl,
+        preferredLanguage: event.preferredLanguage,
       );
 
       // Extraction des données de la réponse
       final role = response.data.role;
       final userName = response.data.fullName;
       final driverType = response.data.driverType;
+      final hasActivePass = response.data.hasActivePass;
 
       print('✅ PROFILE CRÉÉ: role=$role, driverType=$driverType');
 
@@ -188,6 +192,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         role: role,
         userName: userName,
         driverType: driverType,
+        hasActivePass: hasActivePass,
       ));
     } catch (e) {
       print('❌ CREATE PROFILE OTP ERROR: $e');

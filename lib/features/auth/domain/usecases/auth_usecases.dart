@@ -62,18 +62,20 @@ class CreateProfileUseCase {
 
   /// Nouveau : Créer profil pour flux OTP-Only avec driverType
   Future<CreateProfileResponse> createProfileOtp({
-    required String userId,
+    required String phone,
     required String fullName,
-    required String password,
-    required DriverType driverType,
-    required String tempToken,
+    required String role,
+    DriverType? driverType,
+    String? avatarUrl,
+    String? preferredLanguage,
   }) async {
     return await repository.createProfileOtp(
-      userId: userId,
+      phone: phone,
       fullName: fullName,
-      password: password,
+      role: role,
       driverType: driverType,
-      tempToken: tempToken,
+      avatarUrl: avatarUrl,
+      preferredLanguage: preferredLanguage,
     );
   }
 }

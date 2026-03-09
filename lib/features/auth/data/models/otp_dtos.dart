@@ -119,17 +119,20 @@ class VerifyOtpResponse {
 
   /// Factory qui gère les 2 formats de réponse backend
   factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
-    final nextStep = json['nextStep'] as String? ?? 'UNKNOWN';
+    final data = json['data'] as Map<String, dynamic>? ?? {};
+    final hasTokens = (data['accessToken'] ?? json['accessToken']) != null &&
+        (data['refreshToken'] ?? json['refreshToken']) != null;
+    final nextStep = json['nextStep'] as String? ??
+        (hasTokens ? 'COMPLETE' : 'CREATE_PROFILE');
 
     // CAS 1: Nouveau user (CREATE_PROFILE)
     if (nextStep == 'CREATE_PROFILE') {
-      final data = json['data'] as Map<String, dynamic>?;
       return VerifyOtpResponse(
         message: json['message'] as String? ?? 'OTP verified',
         nextStep: nextStep,
-        userId: data?['userId'] as String?,
-        tempToken: data?['tempToken'] as String?,
-        status: data?['status'] as String?,
+        userId: data['userId']?.toString(),
+        tempToken: data['tempToken']?.toString(),
+        status: data['status']?.toString(),
       );
     }
 
@@ -137,17 +140,27 @@ class VerifyOtpResponse {
     return VerifyOtpResponse(
       message: json['message'] as String? ?? 'Login successful',
       nextStep: nextStep,
-      accessToken: json['accessToken'] as String?,
-      refreshToken: json['refreshToken'] as String?,
-      user: json['user'] != null
-          ? UserProfileData.fromJson(json['user'] as Map<String, dynamic>)
-          : null,
+      accessToken:
+          data['accessToken']?.toString() ?? json['accessToken']?.toString(),
+      refreshToken:
+          data['refreshToken']?.toString() ?? json['refreshToken']?.toString(),
+      user: data['user'] != null
+          ? UserProfileData.fromJson(data['user'] as Map<String, dynamic>)
+          : (json['user'] != null
+              ? UserProfileData.fromJson(json['user'] as Map<String, dynamic>)
+              : null),
     );
   }
 
   /// Helpers pour identifier le cas
-  bool get isNewUser => nextStep == 'CREATE_PROFILE';
-  bool get isExistingUser => nextStep == 'COMPLETE' || accessToken != null;
+  bool get isNewUser =>
+      nextStep == 'CREATE_PROFILE' ||
+      status == 'PENDING_PROFILE' ||
+      accessToken == null;
+
+  bool get isExistingUser =>
+      nextStep == 'COMPLETE' ||
+      (accessToken != null && refreshToken != null && user != null);
 }
 
 // ============================================================================
@@ -155,51 +168,72 @@ class VerifyOtpResponse {
 // ============================================================================
 
 class CreateProfileOtpDto {
-  final String userId;
+  final String phone;
   final String fullName;
-  final String password;
-  final DriverType driverType;
-  final String tempToken;
+  final String role;
+  final DriverType? driverType;
+  final String? avatarUrl;
+  final String? preferredLanguage;
 
   CreateProfileOtpDto({
-    required this.userId,
+    required this.phone,
     required this.fullName,
-    required this.password,
-    required this.driverType,
-    required this.tempToken,
+    required this.role,
+    this.driverType,
+    this.avatarUrl,
+    this.preferredLanguage,
   });
 
-  Map<String, dynamic> toJson() => {
-        'userId': userId,
-        'fullName': fullName,
-        'password': password,
-        'driverType': driverType.toShortString(),
-        'tempToken': tempToken,
-      };
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'phone': phone,
+      'fullName': fullName,
+      'role': role,
+    };
+
+    if (driverType != null) {
+      json['driverType'] = driverType!.toShortString();
+    }
+    if (avatarUrl != null && avatarUrl!.trim().isNotEmpty) {
+      json['avatarUrl'] = avatarUrl!.trim();
+    }
+    if (preferredLanguage != null && preferredLanguage!.trim().isNotEmpty) {
+      json['preferredLanguage'] = preferredLanguage!.trim();
+    }
+
+    return json;
+  }
 }
 
 class CreateProfileResponse {
   final String message;
   final UserProfileData data;
-  final String accessToken;
-  final String refreshToken;
+  final String? accessToken;
+  final String? refreshToken;
   final String nextStep;
 
   CreateProfileResponse({
     required this.message,
     required this.data,
-    required this.accessToken,
-    required this.refreshToken,
+    this.accessToken,
+    this.refreshToken,
     required this.nextStep,
   });
 
   factory CreateProfileResponse.fromJson(Map<String, dynamic> json) {
+    final rawData = json['data'] as Map<String, dynamic>? ?? {};
+    final userMap = rawData['user'] is Map<String, dynamic>
+        ? rawData['user'] as Map<String, dynamic>
+        : rawData;
+
     return CreateProfileResponse(
-      message: json['message'] as String,
-      data: UserProfileData.fromJson(json['data'] as Map<String, dynamic>),
-      accessToken: json['accessToken'] as String,
-      refreshToken: json['refreshToken'] as String,
-      nextStep: json['nextStep'] as String? ?? 'PURCHASE_PASS',
+      message: json['message']?.toString() ?? 'Profile created',
+      data: UserProfileData.fromJson(userMap),
+      accessToken:
+          rawData['accessToken']?.toString() ?? json['accessToken']?.toString(),
+      refreshToken: rawData['refreshToken']?.toString() ??
+          json['refreshToken']?.toString(),
+      nextStep: json['nextStep']?.toString() ?? 'COMPLETE',
     );
   }
 }
@@ -210,6 +244,7 @@ class UserProfileData {
   final String phone;
   final String role;
   final String? driverType; // Optionnel (seulement pour DRIVER)
+  final String? driverAvailabilityStatus;
   final String status;
   final bool isVerified;
   final bool? hasActivePass; // Important pour navigation DRIVER
@@ -221,6 +256,7 @@ class UserProfileData {
     required this.phone,
     required this.role,
     this.driverType,
+    this.driverAvailabilityStatus,
     required this.status,
     required this.isVerified,
     this.hasActivePass,
@@ -228,15 +264,34 @@ class UserProfileData {
   });
 
   factory UserProfileData.fromJson(Map<String, dynamic> json) {
+    bool _toBool(dynamic value) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) return value.toLowerCase() == 'true';
+      return false;
+    }
+
     return UserProfileData(
-      id: json['id'] as String,
-      fullName: json['fullName'] as String,
-      phone: json['phone'] as String,
-      role: json['role'] as String,
+      id: json['id']?.toString() ??
+          json['_id']?.toString() ??
+          json['userId']?.toString() ??
+          '',
+      fullName: json['fullName']?.toString() ??
+          [json['firstName'], json['lastName']]
+              .where((e) => e != null && e.toString().trim().isNotEmpty)
+              .join(' ')
+              .trim(),
+      phone: json['phone']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'CLIENT',
       driverType: json['driverType'] as String?,
-      status: json['status'] as String,
-      isVerified: json['isVerified'] as bool? ?? false,
-      hasActivePass: json['hasActivePass'] as bool?,
+      driverAvailabilityStatus: json['driverAvailabilityStatus']?.toString(),
+      status: json['status']?.toString() ?? 'ACTIVE',
+      isVerified: _toBool(json['isVerified']),
+      hasActivePass: json['hasActivePass'] is bool
+          ? json['hasActivePass'] as bool
+          : (json['hasActivePass'] == null
+              ? null
+              : _toBool(json['hasActivePass'])),
       createdAt: json['createdAt'] as String?,
     );
   }
@@ -246,6 +301,11 @@ class UserProfileData {
     if (role == 'CLIENT') return '/clientHome';
 
     if (role == 'DRIVER') {
+      // VTC -> toujours home VTC
+      if (driverType == 'VTC') {
+        return '/driver/vtc/home';
+      }
+
       // Pas de pass actif → Achat pass
       if (hasActivePass == false) {
         return '/driver/passes/purchase';
@@ -254,11 +314,6 @@ class UserProfileData {
       // MOTO → Accueil livreur MOTO
       if (driverType == 'MOTO') {
         return '/livreurHome';
-      }
-
-      // VTC → Accueil VTC
-      if (driverType == 'VTC') {
-        return '/driver/vtc/home';
       }
 
       // Fallback DRIVER

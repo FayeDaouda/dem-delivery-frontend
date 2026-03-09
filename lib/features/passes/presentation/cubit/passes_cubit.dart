@@ -22,7 +22,9 @@ class PassesCubit extends Cubit<PassesState> {
   }) : super(const PassesInitial());
 
   Future<void> fetchAvailablePasses() async {
-    emit(const PassesLoading());
+    if (state is! AvailablePassesLoaded) {
+      emit(const PassesLoading());
+    }
     try {
       final passes = await fetchAvailablePassesUseCase();
       emit(AvailablePassesLoaded(passes: passes));
@@ -32,7 +34,9 @@ class PassesCubit extends Cubit<PassesState> {
   }
 
   Future<void> fetchUserPasses() async {
-    emit(const PassesLoading());
+    if (state is! UserPassesLoaded) {
+      emit(const PassesLoading());
+    }
     try {
       final passes = await fetchUserPassesUseCase();
       emit(UserPassesLoaded(passes: passes));
@@ -42,7 +46,7 @@ class PassesCubit extends Cubit<PassesState> {
   }
 
   Future<void> activatePass(String passId) async {
-    emit(const PassesLoading());
+    // Pas de loading plein écran pour garder une UX instantanée
     try {
       final pass = await activatePassUseCase(passId);
       emit(PassActivated(pass: pass));
@@ -61,7 +65,9 @@ class PassesCubit extends Cubit<PassesState> {
   }
 
   Future<void> getPassDetails(String passId) async {
-    emit(const PassesLoading());
+    if (state is! PassDetailsLoaded) {
+      emit(const PassesLoading());
+    }
     try {
       final pass = await getPassDetailsUseCase(passId);
       emit(PassDetailsLoaded(pass: pass));

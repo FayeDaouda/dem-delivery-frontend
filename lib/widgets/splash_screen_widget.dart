@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/di/service_locator.dart';
 import '../core/storage/secure_storage_service.dart';
+import '../core/utils/navigation_helper.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 
 /// Widget réutilisable pour le Splash Screen
@@ -127,20 +128,35 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
 
   Future<void> _navigateToHomeByRoleOrFallback() async {
     final role = await _storage.getRole();
+    final driverType = await _storage.getDriverType();
+    final user = await _storage.getUser();
+
+    bool? parseBool(dynamic value) {
+      if (value is bool) return value;
+      if (value is String) {
+        final normalized = value.toLowerCase();
+        if (normalized == 'true') return true;
+        if (normalized == 'false') return false;
+      }
+      return null;
+    }
+
+    final hasActivePass = parseBool(user?['hasActivePass']);
 
     if (!mounted) return;
 
-    if (role == 'CLIENT') {
-      Navigator.pushReplacementNamed(context, widget.clientHomeRoute);
+    if (role == null || role.isEmpty) {
+      Navigator.pushReplacementNamed(context, widget.onboardingRoute);
       return;
     }
 
-    if (role == 'DRIVER' || role == 'LIVREUR') {
-      Navigator.pushReplacementNamed(context, widget.driverHomeRoute);
-      return;
-    }
+    final route = NavigationHelper.getHomeRoute(
+      role: role,
+      driverType: driverType,
+      hasActivePass: hasActivePass,
+    );
 
-    Navigator.pushReplacementNamed(context, widget.onboardingRoute);
+    Navigator.pushReplacementNamed(context, route);
   }
 
   bool _isJwtExpired(String token) {

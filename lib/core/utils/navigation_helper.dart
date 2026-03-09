@@ -21,6 +21,11 @@ class NavigationHelper {
 
     // DRIVER
     if (role.toUpperCase() == 'DRIVER') {
+      // DRIVER VTC -> toujours page VTC (le CTA gère activation pass)
+      if (driverType?.toUpperCase() == 'VTC') {
+        return '/driver/vtc/home';
+      }
+
       // Pas de pass actif → Achat pass obligatoire
       if (hasActivePass == false) {
         return '/driver/passes/purchase'; // TODO: Créer page
@@ -56,9 +61,11 @@ class NavigationHelper {
   /// Vérifie si l'utilisateur a besoin d'acheter un pass
   static bool needsPassPurchase({
     required String role,
+    String? driverType,
     bool? hasActivePass,
   }) {
-    return role.toUpperCase() == 'DRIVER' && hasActivePass == false;
+    final isVtc = driverType?.toUpperCase() == 'VTC';
+    return role.toUpperCase() == 'DRIVER' && hasActivePass == false && !isVtc;
   }
 
   /// Retourne un message d'accueil personnalisé
@@ -72,6 +79,10 @@ class NavigationHelper {
     }
 
     if (role.toUpperCase() == 'DRIVER') {
+      if (driverType?.toUpperCase() == 'VTC' && hasActivePass == false) {
+        return 'Activez votre pass pour recevoir des courses VTC';
+      }
+
       if (hasActivePass == false) {
         return 'Activez votre pass pour commencer à livrer';
       }

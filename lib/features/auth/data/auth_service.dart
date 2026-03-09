@@ -18,7 +18,7 @@ class AuthService {
         data: dto.toJson(),
       );
       print("🔔 SEND OTP RESPONSE: ${response.statusCode} / ${response.data}");
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         return RequestOtpResponse.fromJson(response.data);
       }
@@ -52,37 +52,43 @@ class AuthService {
   /// Étape 3: Créer profil avec driverType (MOTO ou VTC)
   /// Retourne accessToken + refreshToken + driverType
   Future<CreateProfileResponse> createProfileOtp({
-    required String userId,
+    required String phone,
     required String fullName,
-    required String password,
-    required DriverType driverType,
-    required String tempToken,
+    required String role,
+    DriverType? driverType,
+    String? avatarUrl,
+    String? preferredLanguage,
   }) async {
     try {
       final dto = CreateProfileOtpDto(
-        userId: userId,
+        phone: phone,
         fullName: fullName,
-        password: password,
+        role: role,
         driverType: driverType,
-        tempToken: tempToken,
+        avatarUrl: avatarUrl,
+        preferredLanguage: preferredLanguage,
       );
-      
+
       final response = await apiClient.dio.post(
         '/auth/otp/create-profile',
         data: dto.toJson(),
       );
-      print("🎉 CREATE PROFILE RESPONSE: ${response.statusCode} / ${response.data}");
+      print(
+          "🎉 CREATE PROFILE RESPONSE: ${response.statusCode} / ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final profileResponse = CreateProfileResponse.fromJson(response.data);
-        
-        // Sauvegarder les tokens
-        await storage.saveTokens(
-          accessToken: profileResponse.accessToken,
-          refreshToken: profileResponse.refreshToken,
-          role: profileResponse.data.role,
-          driverType: profileResponse.data.driverType,
-        );
+
+        // Sauvegarder les tokens si présents
+        if (profileResponse.accessToken != null &&
+            profileResponse.refreshToken != null) {
+          await storage.saveTokens(
+            accessToken: profileResponse.accessToken!,
+            refreshToken: profileResponse.refreshToken!,
+            role: profileResponse.data.role,
+            driverType: profileResponse.data.driverType,
+          );
+        }
 
         return profileResponse;
       }

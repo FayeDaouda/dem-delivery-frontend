@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/di/service_locator.dart';
+import '../core/storage/secure_storage_service.dart';
 import '../design_system/index.dart';
 import '../features/passes/presentation/bloc/pass_bloc.dart';
 
@@ -48,10 +50,15 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
                 backgroundColor: Colors.green,
               ),
             );
-            // Rediriger vers la page livreur après achat
-            Future.delayed(const Duration(seconds: 2), () {
+            // Rediriger vers la page home selon le type driver
+            Future.delayed(const Duration(seconds: 2), () async {
               if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/livreurHome');
+                final storage = getIt<SecureStorageService>();
+                final driverType =
+                    (await storage.getDriverType())?.toUpperCase();
+                final route =
+                    driverType == 'VTC' ? '/driver/vtc/home' : '/livreurHome';
+                Navigator.pushReplacementNamed(context, route);
               }
             });
           }
@@ -65,9 +72,7 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
           }
         },
         builder: (context, state) {
-          if (state is PassLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final isLoading = state is PassLoading;
 
           if (state is PassError) {
             return Center(
@@ -88,8 +93,9 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        context.read<PassBloc>().add(const LoadPassStateEvent()),
+                    onPressed: () => context
+                        .read<PassBloc>()
+                        .add(const LoadPassStateEvent()),
                     icon: const Icon(Icons.refresh),
                     label: const Text('Réessayer'),
                   ),
@@ -98,8 +104,19 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
             );
           }
 
-          // Pour l'instant, affichons une liste de pass fictive en attendant l'API
-          return _buildPassList(context);
+          // Affiche la liste immédiatement + indicateur discret de chargement
+          return Stack(
+            children: [
+              _buildPassList(context),
+              if (isLoading)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+            ],
+          );
         },
       ),
     );
@@ -156,10 +173,11 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
                     children: [
                       Text(
                         'Activez votre pass',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: DEMColors.primary,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: DEMColors.primary,
+                                ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -182,9 +200,11 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
   }
 
   Widget _buildPassCard(BuildContext context, dynamic pass) {
-    final passId = pass['id'] ?? pass['_id'] ?? '';
-    final name = pass['name'] ?? 'Pass';
     final duration = pass['durationDays'] ?? 1;
+    final passType =
+        (pass['type']?.toString() ?? (duration > 1 ? 'weekly' : 'daily'))
+            .toLowerCase();
+    final name = pass['name'] ?? 'Pass';
     final price = pass['price'] ?? 0;
     final description = pass['description'] ?? '';
     final features = (pass['features'] as List?)?.cast<String>() ?? [];
@@ -249,7 +269,7 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             if (description.isNotEmpty) ...[
               const SizedBox(height: DEMSpacing.sm),
               Text(
@@ -288,7 +308,13 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  _showPurchaseConfirmation(context, passId, name, price);
+                  _showPurchaseCheckout(
+                    context,
+                    passType,
+                    name,
+                    price,
+                    duration,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DEMColors.primary,
@@ -313,70 +339,274 @@ class _DriverPassesPurchaseContent extends StatelessWidget {
     );
   }
 
-  void _showPurchaseConfirmation(
+  void _showPurchaseCheckout(
     BuildContext context,
-    String passId,
+    String passType,
     String passName,
     int price,
+    int durationDays,
   ) {
-    showDialog(
+    final promoController = TextEditingController();
+    String selectedMethod = 'wave';
+    int discountAmount = 0;
+    int finalAmount = price;
+    bool isVerifyingPromo = false;
+    bool promoValidated = false;
+    String? promoMessage;
+
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirmer l\'achat'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Vous êtes sur le point d\'acheter:'),
-            const SizedBox(height: 12),
-            Text(
-              passName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Prix: $price FCFA',
-              style: TextStyle(
-                color: DEMColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              // Pour l'instant, juste afficher un message de succès
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('✅ Achat en cours...'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              // TODO: Intégrer avec l'API d'achat réelle
-              context.read<PassBloc>().add(
-                    ActivatePassEvent(
-                      paymentMethod: 'WAVE',
-                      passType: passId,
-                    ),
-                  );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DEMColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirmer'),
-          ),
-        ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    );
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: DEMSpacing.md,
+                  right: DEMSpacing.md,
+                  top: DEMSpacing.md,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom +
+                      DEMSpacing.md,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Finaliser l\'achat du pass',
+                        style: Theme.of(sheetContext)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: DEMSpacing.md),
+                      Container(
+                        padding: const EdgeInsets.all(DEMSpacing.md),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DEMColors.gray200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(passName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                )),
+                            const SizedBox(height: 6),
+                            Text(
+                                'Durée: $durationDays jour${durationDays > 1 ? 's' : ''}'),
+                            const SizedBox(height: 4),
+                            Text('Prix: $price FCFA'),
+                            if (discountAmount > 0) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Remise: -$discountAmount FCFA',
+                                style: const TextStyle(color: Colors.green),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Total: $finalAmount FCFA',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: DEMColors.primary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: DEMSpacing.md),
+                      TextField(
+                        controller: promoController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Code promo (optionnel)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: DEMSpacing.sm),
+                      OutlinedButton.icon(
+                        onPressed: isVerifyingPromo
+                            ? null
+                            : () async {
+                                final code = promoController.text.trim();
+                                if (code.isEmpty) {
+                                  setSheetState(() {
+                                    promoValidated = false;
+                                    discountAmount = 0;
+                                    finalAmount = price;
+                                    promoMessage =
+                                        'Saisissez un code promo avant vérification.';
+                                  });
+                                  return;
+                                }
+
+                                setSheetState(() {
+                                  isVerifyingPromo = true;
+                                  promoMessage = null;
+                                });
+
+                                try {
+                                  final dio = getIt<Dio>();
+                                  final response = await dio.post(
+                                    '/promo-codes/validate',
+                                    data: {
+                                      'code': code,
+                                      'amount': price,
+                                    },
+                                  );
+
+                                  final data = response.data;
+                                  final promoData = data is Map
+                                      ? (data['data'] as Map?)
+                                      : null;
+                                  final applicableDiscount =
+                                      (promoData?['applicableDiscount'] as num?)
+                                              ?.toInt() ??
+                                          0;
+                                  final computedFinal =
+                                      (promoData?['finalAmount'] as num?)
+                                              ?.toInt() ??
+                                          (price - applicableDiscount);
+
+                                  setSheetState(() {
+                                    promoValidated = true;
+                                    discountAmount = applicableDiscount;
+                                    finalAmount =
+                                        computedFinal < 0 ? 0 : computedFinal;
+                                    promoMessage =
+                                        data is Map && data['message'] != null
+                                            ? data['message'].toString()
+                                            : 'Code promo valide.';
+                                  });
+                                } on DioException catch (e) {
+                                  final message = e.response?.data?['message']
+                                          ?.toString() ??
+                                      'Code promo invalide.';
+                                  setSheetState(() {
+                                    promoValidated = false;
+                                    discountAmount = 0;
+                                    finalAmount = price;
+                                    promoMessage = message;
+                                  });
+                                } catch (_) {
+                                  setSheetState(() {
+                                    promoValidated = false;
+                                    discountAmount = 0;
+                                    finalAmount = price;
+                                    promoMessage =
+                                        'Impossible de vérifier le code promo.';
+                                  });
+                                } finally {
+                                  setSheetState(() {
+                                    isVerifyingPromo = false;
+                                  });
+                                }
+                              },
+                        icon: isVerifyingPromo
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.verified),
+                        label: const Text('Vérifier le code promo'),
+                      ),
+                      if (promoMessage != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          promoMessage!,
+                          style: TextStyle(
+                            color: promoValidated ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: DEMSpacing.md),
+                      const Text(
+                        'Mode de paiement',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: DEMSpacing.sm),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Wave'),
+                            selected: selectedMethod == 'wave',
+                            onSelected: (_) => setSheetState(() {
+                              selectedMethod = 'wave';
+                            }),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Orange Money'),
+                            selected: selectedMethod == 'orange_money',
+                            onSelected: (_) => setSheetState(() {
+                              selectedMethod = 'orange_money';
+                            }),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Yas'),
+                            selected: selectedMethod == 'yas',
+                            onSelected: (_) => setSheetState(() {
+                              selectedMethod = 'yas';
+                            }),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: DEMSpacing.lg),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final storage = getIt<SecureStorageService>();
+                          final user = await storage.getUser();
+                          final phone = user?['phone']?.toString();
+
+                          if (!sheetContext.mounted) return;
+                          Navigator.pop(sheetContext);
+
+                          context.read<PassBloc>().add(
+                                ActivatePassEvent(
+                                  paymentMethod: selectedMethod,
+                                  passType: passType,
+                                  phoneNumber: phone,
+                                  promoCode: promoController.text.trim().isEmpty
+                                      ? null
+                                      : promoController.text.trim(),
+                                  clientRequestId:
+                                      'driver-${DateTime.now().millisecondsSinceEpoch}',
+                                ),
+                              );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: DEMColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: DEMSpacing.md),
+                        ),
+                        child:
+                            Text('Finaliser le paiement ($finalAmount FCFA)'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      promoController.dispose();
+    });
   }
 }

@@ -66,13 +66,21 @@ class SecureStorageService {
     final hasActivePass = await _storage.read(key: 'driver_has_active_pass');
     final passExpiresAt = await _storage.read(key: 'driver_pass_expires_at');
 
+    bool? _parseNullableBool(String? value) {
+      if (value == null) return null;
+      final normalized = value.toLowerCase();
+      if (normalized == 'true') return true;
+      if (normalized == 'false') return false;
+      return null;
+    }
+
     if (phone != null) {
       return {
         'phone': phone,
         'name': name,
         'fullName': fullName,
-        'isOnline': isOnline,
-        'hasActivePass': hasActivePass,
+        'isOnline': _parseNullableBool(isOnline),
+        'hasActivePass': _parseNullableBool(hasActivePass),
         'passExpiresAt': passExpiresAt,
       };
     }

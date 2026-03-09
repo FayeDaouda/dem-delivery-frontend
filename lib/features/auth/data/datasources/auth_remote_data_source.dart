@@ -19,11 +19,12 @@ abstract class AuthRemoteDataSource {
 
   /// Nouveau : Créer profil pour flux OTP-Only avec driverType
   Future<CreateProfileResponse> createProfileOtp({
-    required String userId,
+    required String phone,
     required String fullName,
-    required String password,
-    required DriverType driverType,
-    required String tempToken,
+    required String role,
+    DriverType? driverType,
+    String? avatarUrl,
+    String? preferredLanguage,
   });
 
   Future<void> logout();
@@ -81,15 +82,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<Map<String, dynamic>> verifyOtp(String phone, String code) async {
     try {
+      final payload = {
+        'phone': phone,
+        'code': code,
+      };
+
       print(
-        '📤 [SIGNUP] POST /auth/otp/verify payload: {phone: $phone, code: $code}',
+        '📤 [SIGNUP] POST /auth/otp/verify payload: $payload',
       );
       final response = await dio.post(
         '/auth/otp/verify',
-        data: {
-          'phone': phone,
-          'code': code,
-        },
+        data: payload,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -213,19 +216,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   /// Nouveau : Créer profil pour flux OTP-Only avec driverType
   @override
   Future<CreateProfileResponse> createProfileOtp({
-    required String userId,
+    required String phone,
     required String fullName,
-    required String password,
-    required DriverType driverType,
-    required String tempToken,
+    required String role,
+    DriverType? driverType,
+    String? avatarUrl,
+    String? preferredLanguage,
   }) async {
     try {
       final dto = CreateProfileOtpDto(
-        userId: userId,
+        phone: phone,
         fullName: fullName,
-        password: password,
+        role: role,
         driverType: driverType,
-        tempToken: tempToken,
+        avatarUrl: avatarUrl,
+        preferredLanguage: preferredLanguage,
       );
 
       print(

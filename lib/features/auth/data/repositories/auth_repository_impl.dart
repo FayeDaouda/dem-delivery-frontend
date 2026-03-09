@@ -204,6 +204,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = data['user'];
       final roleFromUser =
           user is Map<String, dynamic> ? user['role']?.toString() : null;
+      final driverTypeFromUser =
+          user is Map<String, dynamic> ? user['driverType']?.toString() : null;
       final roleFromData = data['role']?.toString();
       final role = response['role']?.toString() ??
           roleFromUser ??
@@ -235,6 +237,7 @@ class AuthRepositoryImpl implements AuthRepository {
           accessToken: accessToken,
           refreshToken: refreshToken,
           role: role,
+          driverType: driverTypeFromUser,
         );
 
         if (userPhone != null && userPhone.isNotEmpty) {
@@ -277,28 +280,35 @@ class AuthRepositoryImpl implements AuthRepository {
   /// Nouvelle méthode: Créer profil pour flux OTP-Only avec driverType
   @override
   Future<CreateProfileResponse> createProfileOtp({
-    required String userId,
+    required String phone,
     required String fullName,
-    required String password,
-    required DriverType driverType,
-    required String tempToken,
+    required String role,
+    DriverType? driverType,
+    String? avatarUrl,
+    String? preferredLanguage,
   }) async {
     try {
       debugPrint('🎉 Calling remoteDataSource.createProfileOtp...');
-      
+      final formattedPhone = phone.startsWith('+221') ? phone : '+221$phone';
+
       final response = await remoteDataSource.createProfileOtp(
-        userId: userId,
+        phone: formattedPhone,
         fullName: fullName,
-        password: password,
+        role: role,
         driverType: driverType,
-        tempToken: tempToken,
+        avatarUrl: avatarUrl,
+        preferredLanguage: preferredLanguage,
       );
 
       // Sauvegarder la session
-      await _saveSessionFromResponse(response.toJson(), fallbackPhone: null);
+      await _saveSessionFromResponse(
+        response.toJson(),
+        fallbackPhone: formattedPhone,
+      );
 
-      debugPrint('✅ Profile créé avec driverType: ${driverType.toShortString()}');
-      
+      debugPrint(
+          '✅ Profile créé avec role=$role, driverType=${driverType?.toShortString()}');
+
       return response;
     } catch (e) {
       debugPrint('❌ CREATE PROFILE OTP ERROR: $e');
@@ -311,14 +321,21 @@ extension CreateProfileResponseToJson on CreateProfileResponse {
   Map<String, dynamic> toJson() => {
         'message': message,
         'data': {
-          'id': data.id,
-          'fullName': data.fullName,
-          'phone': data.phone,
+          'user': {
+            'id': data.id,
+            'fullName': data.fullName,
+            'phone': data.phone,
+            'role': data.role,
+            'driverType': data.driverType,
+            'driverAvailabilityStatus': data.driverAvailabilityStatus,
+            'status': data.status,
+            'isVerified': data.isVerified,
+            'hasActivePass': data.hasActivePass,
+            'createdAt': data.createdAt,
+          },
+          'accessToken': accessToken,
+          'refreshToken': refreshToken,
           'role': data.role,
-          'driverType': data.driverType,
-          'status': data.status,
-          'isVerified': data.isVerified,
-          'createdAt': data.createdAt,
         },
         'accessToken': accessToken,
         'refreshToken': refreshToken,

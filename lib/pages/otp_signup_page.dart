@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/utils/navigation_helper.dart';
@@ -33,41 +34,35 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
   // Controllers
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
   final List<TextEditingController> _otpControllers =
-      List.generate(4, (_) => TextEditingController());
+      List.generate(6, (_) => TextEditingController());
 
   // État local
   int _currentStep = 1; // 1: Phone, 2: OTP, 3: Profile + Driver Type
+  String _selectedRole = 'CLIENT'; // CLIENT ou DRIVER
   String? _selectedDriverType; // "MOTO" ou "VTC"
-  String? _userId;
-  String? _tempToken;
-  bool _showPassword = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
     _fullNameController.dispose();
-    _passwordController.dispose();
     for (final controller in _otpControllers) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  String get _otpCode =>
-      _otpControllers.map((c) => c.text).join().trim();
+  String get _otpCode => _otpControllers.map((c) => c.text).join().trim();
 
   bool get _isStep1Valid =>
       _phoneController.text.trim().isNotEmpty &&
       _phoneController.text.trim().length >= 9;
 
-  bool get _isStep2Valid => _otpCode.length == 4;
+  bool get _isStep2Valid => _otpCode.length == 6;
 
   bool get _isStep3Valid =>
-      _fullNameController.text.trim().isNotEmpty &&
-      _passwordController.text.trim().length >= 8 &&
-      _selectedDriverType != null;
+      _fullNameController.text.trim().length >= 3 &&
+      (_selectedRole == 'CLIENT' || _selectedDriverType != null);
 
   void _handleSendOTP() {
     if (!_isStep1Valid) {
@@ -87,7 +82,7 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
 
   void _handleVerifyOTP() {
     if (!_isStep2Valid) {
-      AppDialog.showWarning(context, 'Veuillez entrer le code OTP');
+      AppDialog.showWarning(context, 'Le code OTP doit contenir 6 chiffres');
       return;
     }
 
@@ -104,30 +99,26 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
     if (!_isStep3Valid) {
       AppDialog.showWarning(
         context,
-        'Veuillez compléter le profil et sélectionner un type de driver',
+        'Nom complet (min 3) requis. Pour DRIVER, choisissez MOTO ou VTC.',
       );
       return;
     }
 
-    if (_userId == null || _tempToken == null) {
-      AppDialog.showError(context, 'Session expirée. Recommencez.');
-      return;
-    }
-
     final fullName = _fullNameController.text.trim();
-    final password = _passwordController.text.trim();
+    final phone = _phoneController.text.trim();
+    final formattedPhone = phone.startsWith('+221') ? phone : '+221$phone';
 
     print(
-      '🎯 [STEP 3] Creating profile: name=$fullName, driverType=$_selectedDriverType',
+      '🎯 [STEP 3] Creating profile: role=$_selectedRole, name=$fullName, driverType=$_selectedDriverType',
     );
 
     context.read<AuthBloc>().add(
           AuthCreateProfileOtpEvent(
-            userId: _userId!,
+            phone: formattedPhone,
             fullName: fullName,
-            password: password,
-            driverType: _selectedDriverType!,
-            tempToken: _tempToken!,
+            role: _selectedRole,
+            driverType: _selectedRole == 'DRIVER' ? _selectedDriverType : null,
+            preferredLanguage: 'fr',
           ),
         );
   }
@@ -142,8 +133,8 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
         title: Text(
           'Inscription',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         centerTitle: true,
       ),
@@ -160,28 +151,23 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
             print(
               '✅ OTP verified, userId=${state.userId}, tempToken=${state.tempToken}',
             );
-            
-            // Sauvegarder userId et tempToken pour étape 3
-            _userId = state.userId;
-            _tempToken = state.tempToken;
 
-            // Si userId et tempToken sont présents = flux OTP-Only
-            if (state.userId != null && state.tempToken != null) {
-              setState(() => _currentStep = 3);
-            }
+            // Toujours passer à l'étape 3 après OTP validé
+            // (certains backends ne retournent pas userId/tempToken)
+            setState(() => _currentStep = 3);
           }
 
           // Gestion des réponses du backend après vérification OTP
           if (state is AuthSuccess && _currentStep == 2) {
             // Si on reçoit AuthSuccess en step 2 = user existant qui se reconnecte
             print('✅ [SIGNUP] User existant détecté - Redirect home');
-            
+
             final route = NavigationHelper.getHomeRoute(
               role: state.role,
               driverType: state.driverType,
               hasActivePass: state.hasActivePass,
             );
-            
+
             Navigator.pushReplacementNamed(context, route);
             return;
           }
@@ -194,13 +180,13 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
             // Navigation conditionnelle avec NavigationHelper
             Future.delayed(const Duration(milliseconds: 500), () {
               if (!mounted) return;
-              
+
               final route = NavigationHelper.getHomeRoute(
                 role: state.role,
                 driverType: state.driverType,
                 hasActivePass: state.hasActivePass,
               );
-              
+
               print('🧭 [SIGNUP] Navigation vers: $route');
               Navigator.pushReplacementNamed(context, route);
             });
@@ -247,16 +233,16 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
         Text(
           'Entrez votre numéro de téléphone',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: DEMColors.gray900,
-          ),
+                fontWeight: FontWeight.bold,
+                color: DEMColors.gray900,
+              ),
         ),
         const SizedBox(height: DEMSpacing.sm),
         Text(
           'Nous vous enverrons un code OTP par SMS',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: DEMColors.gray600,
-          ),
+                color: DEMColors.gray600,
+              ),
         ),
         const SizedBox(height: DEMSpacing.xl),
 
@@ -290,30 +276,29 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
                 onPressed: isLoading ? null : _handleSendOTP,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DEMColors.primary,
-                  disabledBackgroundColor:
-                      DEMColors.primary.withOpacity(0.5),
+                  disabledBackgroundColor: DEMColors.primary.withOpacity(0.5),
                   padding: const EdgeInsets.symmetric(
                     vertical: DEMSpacing.md,
                   ),
                 ),
                 child: isLoading
                     ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 2,
-                      ),
-                    )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      )
                     : Text(
-                      'Recevoir OTP',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isLoading ? Colors.grey : Colors.white,
+                        'Recevoir OTP',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isLoading ? Colors.grey : Colors.white,
+                        ),
                       ),
-                    ),
               ),
             );
           },
@@ -338,32 +323,32 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
         Text(
           'Vérifiez votre numéro',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: DEMColors.gray900,
-          ),
+                fontWeight: FontWeight.bold,
+                color: DEMColors.gray900,
+              ),
         ),
         const SizedBox(height: DEMSpacing.sm),
         Text(
           'Entrez le code reçu par SMS',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: DEMColors.gray600,
-          ),
+                color: DEMColors.gray600,
+              ),
         ),
         const SizedBox(height: DEMSpacing.xl),
 
-        // Inputs OTP (4 champs)
+        // Inputs OTP (6 champs)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(4, (index) {
+          children: List.generate(6, (index) {
             return SizedBox(
-              width: 60,
+              width: 48,
               child: TextField(
                 controller: _otpControllers[index],
                 textAlign: TextAlign.center,
                 keyboardType: TextInputType.number,
                 maxLength: 1,
                 inputFormatters: [
-                  // Only digits
+                  FilteringTextInputFormatter.digitsOnly,
                 ],
                 decoration: InputDecoration(
                   counter: const SizedBox.shrink(),
@@ -373,7 +358,7 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
                   contentPadding: const EdgeInsets.all(DEMSpacing.md),
                 ),
                 onChanged: (value) {
-                  if (value.isNotEmpty && index < 3) {
+                  if (value.isNotEmpty && index < 5) {
                     FocusScope.of(context).nextFocus();
                   }
                   setState(() {});
@@ -391,33 +376,33 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
             return SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: (_isStep2Valid && !isLoading) ? _handleVerifyOTP : null,
+                onPressed:
+                    (_isStep2Valid && !isLoading) ? _handleVerifyOTP : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DEMColors.primary,
-                  disabledBackgroundColor:
-                      DEMColors.primary.withOpacity(0.5),
+                  disabledBackgroundColor: DEMColors.primary.withOpacity(0.5),
                   padding: const EdgeInsets.symmetric(
                     vertical: DEMSpacing.md,
                   ),
                 ),
                 child: isLoading
                     ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 2,
-                      ),
-                    )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                      'Vérifier',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        'Vérifier',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
               ),
             );
           },
@@ -457,22 +442,23 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
         Text(
           'Complétez votre profil',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: DEMColors.gray900,
-          ),
+                fontWeight: FontWeight.bold,
+                color: DEMColors.gray900,
+              ),
         ),
         const SizedBox(height: DEMSpacing.sm),
         Text(
           'Quelques informations pour commencer',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: DEMColors.gray600,
-          ),
+                color: DEMColors.gray600,
+              ),
         ),
         const SizedBox(height: DEMSpacing.xl),
 
         // Nom complet
         TextField(
           controller: _fullNameController,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             labelText: 'Nom complet',
             hintText: 'Moussa Diallo',
@@ -487,41 +473,56 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
         ),
         const SizedBox(height: DEMSpacing.md),
 
-        // Mot de passe
-        TextField(
-          controller: _passwordController,
-          obscureText: !_showPassword,
-          decoration: InputDecoration(
-            labelText: 'Mot de passe',
-            hintText: 'Au moins 8 caractères',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: DEMSpacing.md,
-              vertical: DEMSpacing.md,
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _showPassword ? Icons.visibility : Icons.visibility_off,
+        Text(
+          'Rôle',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: DEMColors.gray900,
               ),
-              onPressed: () {
-                setState(() => _showPassword = !_showPassword);
-              },
+        ),
+        const SizedBox(height: DEMSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('CLIENT'),
+                selected: _selectedRole == 'CLIENT',
+                onSelected: (selected) {
+                  if (!selected) return;
+                  setState(() {
+                    _selectedRole = 'CLIENT';
+                    _selectedDriverType = null;
+                  });
+                },
+              ),
             ),
-          ),
+            const SizedBox(width: DEMSpacing.md),
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('DRIVER'),
+                selected: _selectedRole == 'DRIVER',
+                onSelected: (selected) {
+                  if (!selected) return;
+                  setState(() {
+                    _selectedRole = 'DRIVER';
+                  });
+                },
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: DEMSpacing.xl),
+        const SizedBox(height: DEMSpacing.lg),
 
-        // Sélection type de driver
-        DriverTypeSelector(
-          selectedType: _selectedDriverType,
-          onSelected: (type) {
-            setState(() => _selectedDriverType = type);
-          },
-          isLoading: false,
-        ),
-        const SizedBox(height: DEMSpacing.xl),
+        if (_selectedRole == 'DRIVER') ...[
+          DriverTypeSelector(
+            selectedType: _selectedDriverType,
+            onSelected: (type) {
+              setState(() => _selectedDriverType = type);
+            },
+            isLoading: false,
+          ),
+          const SizedBox(height: DEMSpacing.xl),
+        ],
 
         // Bouton S'inscrire
         BlocBuilder<AuthBloc, AuthState>(
@@ -530,35 +531,33 @@ class _OtpSignupPageContentState extends State<_OtpSignupPageContent> {
             return SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: (_isStep3Valid && !isLoading)
-                    ? _handleCreateProfile
-                    : null,
+                onPressed:
+                    (_isStep3Valid && !isLoading) ? _handleCreateProfile : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: DEMColors.primary,
-                  disabledBackgroundColor:
-                      DEMColors.primary.withOpacity(0.5),
+                  disabledBackgroundColor: DEMColors.primary.withOpacity(0.5),
                   padding: const EdgeInsets.symmetric(
                     vertical: DEMSpacing.md,
                   ),
                 ),
                 child: isLoading
                     ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 2,
-                      ),
-                    )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                      'S\'inscrire',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        'S\'inscrire',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
               ),
             );
           },

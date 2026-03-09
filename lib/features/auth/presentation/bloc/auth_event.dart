@@ -62,23 +62,25 @@ class AuthCreateProfileEvent extends AuthEvent {
 
 /// Nouveau événement pour flux OTP-Only avec sélection MOTO/VTC
 class AuthCreateProfileOtpEvent extends AuthEvent {
-  final String userId;
+  final String phone;
   final String fullName;
-  final String password;
-  final String driverType; // "MOTO" ou "VTC"
-  final String tempToken;
+  final String role; // "CLIENT" ou "DRIVER"
+  final String? driverType; // "MOTO" ou "VTC"
+  final String? avatarUrl;
+  final String? preferredLanguage;
 
   const AuthCreateProfileOtpEvent({
-    required this.userId,
+    required this.phone,
     required this.fullName,
-    required this.password,
-    required this.driverType,
-    required this.tempToken,
+    required this.role,
+    this.driverType,
+    this.avatarUrl,
+    this.preferredLanguage,
   });
 
   @override
   List<Object?> get props =>
-      [userId, fullName, password, driverType, tempToken];
+      [phone, fullName, role, driverType, avatarUrl, preferredLanguage];
 }
 
 class AuthResendOtpEvent extends AuthEvent {

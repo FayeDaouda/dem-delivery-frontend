@@ -23,7 +23,11 @@ class PassBloc extends Bloc<PassEvent, PassState> {
     ActivatePassEvent event,
     Emitter<PassState> emit,
   ) async {
-    emit(const PassLoading());
+    // 🚀 Optimistic update: afficher le pass immédiatement (24h par défaut)
+    final optimisticValidUntil = DateTime.now().add(const Duration(hours: 24));
+    emit(PassActivationSuccess(validUntil: optimisticValidUntil));
+    emit(PassActive(validUntil: optimisticValidUntil));
+
     try {
       final response = await _passRepository.activatePass(
         passType: event.passType,
@@ -43,9 +47,8 @@ class PassBloc extends Bloc<PassEvent, PassState> {
           amount: response.amount ?? 0,
         ));
       } else {
-        // Paiement succès - pass immédiatement actif
-        final validUntil = response.validUntil ??
-            DateTime.now().add(const Duration(hours: 24));
+        // Paiement succès - mettre à jour avec la date réelle du backend
+        final validUntil = response.validUntil ?? optimisticValidUntil;
         emit(PassActivationSuccess(validUntil: validUntil));
         emit(PassActive(validUntil: validUntil));
       }
@@ -93,7 +96,10 @@ class PassBloc extends Bloc<PassEvent, PassState> {
     RenewPassEvent event,
     Emitter<PassState> emit,
   ) async {
-    emit(const PassLoading());
+    final optimisticValidUntil = DateTime.now().add(const Duration(hours: 24));
+    emit(PassActivationSuccess(validUntil: optimisticValidUntil));
+    emit(PassActive(validUntil: optimisticValidUntil));
+
     try {
       final response = await _passRepository.activatePass(
         passType: 'daily',
@@ -108,8 +114,7 @@ class PassBloc extends Bloc<PassEvent, PassState> {
           amount: response.amount ?? 0,
         ));
       } else {
-        final validUntil = response.validUntil ??
-            DateTime.now().add(const Duration(hours: 24));
+        final validUntil = response.validUntil ?? optimisticValidUntil;
         emit(PassActivationSuccess(validUntil: validUntil));
         emit(PassActive(validUntil: validUntil));
       }

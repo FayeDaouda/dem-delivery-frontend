@@ -26,7 +26,10 @@ class DeliveriesBloc extends Bloc<DeliveriesEvent, DeliveriesState> {
     FetchDeliveriesEvent event,
     Emitter<DeliveriesState> emit,
   ) async {
-    emit(const DeliveriesLoading());
+    // Évite le flicker si une liste est déjà affichée
+    if (state is! DeliveriesLoaded) {
+      emit(const DeliveriesLoading());
+    }
     try {
       final deliveries = await fetchDeliveriesUseCase();
       emit(DeliveriesLoaded(deliveries: deliveries));
@@ -39,7 +42,10 @@ class DeliveriesBloc extends Bloc<DeliveriesEvent, DeliveriesState> {
     GetDeliveryDetailsEvent event,
     Emitter<DeliveriesState> emit,
   ) async {
-    emit(const DeliveriesLoading());
+    // Évite le flicker quand on navigue entre détails
+    if (state is! DeliveryDetailsLoaded) {
+      emit(const DeliveriesLoading());
+    }
     try {
       final delivery = await getDeliveryDetailsUseCase(event.id);
       emit(DeliveryDetailsLoaded(delivery: delivery));
