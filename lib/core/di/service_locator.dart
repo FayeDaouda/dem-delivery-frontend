@@ -1,27 +1,27 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
-import '../../features/auth/data/datasources/auth_remote_data_source.dart';
-import '../../features/auth/data/repositories/auth_repository_impl.dart';
-import '../../features/auth/domain/repositories/auth_repository.dart';
-import '../../features/auth/domain/usecases/auth_usecases.dart';
-import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../features/deliveries/data/datasources/deliveries_local_data_source.dart';
-import '../../features/deliveries/data/datasources/deliveries_remote_data_source.dart';
-import '../../features/deliveries/data/repositories/deliveries_repository_impl.dart';
-import '../../features/deliveries/domain/repositories/deliveries_repository.dart';
-import '../../features/deliveries/domain/usecases/deliveries_usecases.dart';
-import '../../features/deliveries/presentation/bloc/deliveries_bloc.dart';
-import '../../features/passes/data/datasources/passes_remote_data_source.dart';
-import '../../features/passes/data/repositories/pass_repository.dart';
-import '../../features/passes/data/repositories/passes_repository_impl.dart';
-import '../../features/passes/domain/repositories/passes_repository.dart';
-import '../../features/passes/domain/usecases/passes_usecases.dart';
-import '../../features/passes/presentation/bloc/pass_bloc.dart';
-import '../../features/passes/presentation/cubit/passes_cubit.dart';
-import '../../services/delivery_live_service.dart';
-import '../services/socket_service.dart';
-import '../storage/secure_storage_service.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/domain/repositories/auth_repository.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/domain/usecases/auth_usecases.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/data/datasources/deliveries_local_data_source.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/data/datasources/deliveries_remote_data_source.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/data/repositories/deliveries_repository_impl.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/domain/repositories/deliveries_repository.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/domain/usecases/deliveries_usecases.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/presentation/bloc/deliveries_bloc.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/data/datasources/passes_remote_data_source.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/data/repositories/pass_repository.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/data/repositories/passes_repository_impl.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/domain/repositories/passes_repository.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/domain/usecases/passes_usecases.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/presentation/bloc/pass_bloc.dart';
+import 'package:delivery_express_mobility_frontend/features/passes/presentation/cubit/passes_cubit.dart';
+import 'package:delivery_express_mobility_frontend/services/delivery_live_service.dart';
+import 'package:delivery_express_mobility_frontend/core/services/socket_service.dart';
+import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -191,7 +191,9 @@ Future<void> setupDependencies() async {
 
   // ============== DELIVERY LIVE SERVICE ==============
   getIt.registerSingleton<DeliveryLiveService>(
-    DeliveryLiveService(),
+    DeliveryLiveService(
+      deliveriesRepository: getIt<DeliveriesRepository>(),
+    ),
   );
 
   // ============== PASS BLOC ==============
