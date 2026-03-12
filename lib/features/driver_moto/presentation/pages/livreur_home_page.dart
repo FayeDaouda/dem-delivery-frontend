@@ -8,9 +8,9 @@ import 'package:delivery_express_mobility_frontend/features/driver_shared/panels
 import 'package:delivery_express_mobility_frontend/features/driver_shared/panels/livreur_panel_state.dart';
 import 'package:delivery_express_mobility_frontend/features/driver_shared/panels/pass_activation_panel.dart';
 import 'package:delivery_express_mobility_frontend/features/driver_shared/panels/welcome_panel.dart';
-import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/map_controls_widget.dart';
 import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/delivery_badges_widget.dart';
 import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/floating_header_widget.dart';
+import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/map_controls_widget.dart';
 import 'package:delivery_express_mobility_frontend/features/passes/presentation/bloc/pass_bloc.dart';
 import 'package:delivery_express_mobility_frontend/services/delivery_live_service.dart';
 import 'package:dio/dio.dart';
@@ -68,6 +68,8 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
   LivreurPanelState _panelState = LivreurPanelState.welcome;
   bool _isOnline = true;
   bool _gpsActive = true;
+  Timer? _recenterDebounce;
+  DateTime _lastDeliveryUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   final int _batteryLevel = 78;
   final int _dailyEarnings = 8500;
   List<AvailableDelivery> _nearbyDeliveries = [];
@@ -100,6 +102,7 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
     _passStatePollingTimer?.cancel();
     _deliveryLiveService.stopListening();
     _deliveryLiveService.dispose();
+    _recenterDebounce?.cancel();
     super.dispose();
   }
 
@@ -188,6 +191,14 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
     _deliverySubscription =
         _deliveryLiveService.deliveryStream.listen((deliveries) {
       if (!mounted) return;
+
+      // Throttle frequent delivery updates to reduce UI / native pressure
+      final now = DateTime.now();
+      if (now.difference(_lastDeliveryUpdate) < const Duration(milliseconds: 500)) {
+        return; // skip update when too frequent
+      }
+      _lastDeliveryUpdate = now;
+
       setState(() => _nearbyDeliveries = deliveries);
 
       if (deliveries.isNotEmpty) {
@@ -399,40 +410,56 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
 
   Future<void> _zoomIn() async {
     if (_mapController != null) {
-      await _mapController!.animateCamera(CameraUpdate.zoomIn());
+      try {
+        await _mapController!.animateCamera(CameraUpdate.zoomIn());
+      } catch (e) {
+        debugPrint('Map zoomIn error: $e');
+      }
     }
   }
 
   Future<void> _zoomOut() async {
     if (_mapController != null) {
-      await _mapController!.animateCamera(CameraUpdate.zoomOut());
+      try {
+        await _mapController!.animateCamera(CameraUpdate.zoomOut());
+      } catch (e) {
+        debugPrint('Map zoomOut error: $e');
+      }
     }
   }
 
   Future<void> _recenterMap() async {
-    if (_mapController != null) {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        ).timeout(const Duration(seconds: 5));
+    // Debounce repeated recenter requests to avoid heavy native work
+    _recenterDebounce?.cancel();
+    _recenterDebounce = Timer(const Duration(milliseconds: 500), () async {
+      if (_mapController != null) {
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+          ).timeout(const Duration(seconds: 5));
 
-        await _mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(position.latitude, position.longitude),
-              zoom: 15.5,
-            ),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        DEMToast.show(
-          context: context,
-          message: 'Impossible de recentrer',
-          type: ToastType.error,
-        );
+          try {
+            await _mapController!.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: LatLng(position.latitude, position.longitude),
+                  zoom: 15.5,
+                ),
+              ),
+            );
+          } catch (e) {
+            debugPrint('Map animateCamera error: $e');
+          }
+        } catch (e) {
+          if (!mounted) return;
+          DEMToast.show(
+            context: context,
+            message: 'Impossible de recentrer',
+            type: ToastType.error,
+          );
+        }
       }
-    }
+    });
   }
 
   void _goToKyc() {

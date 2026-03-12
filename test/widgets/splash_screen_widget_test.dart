@@ -1,12 +1,11 @@
 // Test unitaire pour SplashScreenWidget
 // Pour exécuter : flutter test test/widgets/splash_screen_widget_test.dart
 
+import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
+import 'package:delivery_express_mobility_frontend/widgets/splash_screen_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-
-import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
-import 'package:delivery_express_mobility_frontend/widgets/splash_screen_widget.dart';
 
 // Note: Pour générer les mocks, exécutez :
 // flutter pub run build_runner build
@@ -24,9 +23,13 @@ void main() {
 
       // Assert
       final splash = find.byType(SplashScreenWidget);
-      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
-      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)), findsWidgets);
-      expect(find.descendant(of: splash, matching: find.byType(ScaleTransition)), findsWidgets);
+      expect(find.descendant(of: splash, matching: find.byType(Image)),
+          findsOneWidget);
+      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)),
+          findsWidgets);
+      expect(
+          find.descendant(of: splash, matching: find.byType(ScaleTransition)),
+          findsWidgets);
     });
 
     testWidgets('utilise le bon backgroundColor', (tester) async {
@@ -212,7 +215,8 @@ void main() {
 
       // Assert - Vérifier que le widget est rendu
       final splash = find.byType(SplashScreenWidget);
-      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)),
+          findsOneWidget);
 
       // Cleanup
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
@@ -233,7 +237,8 @@ void main() {
 
       // Assert - Vérifier que le widget est rendu
       final splash = find.byType(SplashScreenWidget);
-      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)),
+          findsOneWidget);
 
       // Cleanup
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
@@ -252,7 +257,8 @@ void main() {
 
       // Assert - Vérifie la présence des transitions sans avancer manuellement l'animation
       final splash = find.byType(SplashScreenWidget);
-      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)), findsWidgets);
+      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)),
+          findsWidgets);
     });
   });
 
@@ -286,7 +292,8 @@ void main() {
 
       // Assert
       final splash = find.byType(SplashScreenWidget);
-      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)),
+          findsOneWidget);
     });
   });
 }

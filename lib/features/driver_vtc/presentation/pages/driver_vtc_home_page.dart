@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/driver_pass_status.dart';
+import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/driver_status_toggle.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -16,9 +18,7 @@ import '../../services/driver_rides_service.dart';
 import '../../services/driver_stats_service.dart';
 import '../bloc/driver_bloc.dart';
 import '../bloc/driver_event.dart';
-import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/driver_pass_status.dart';
 import '../widgets/driver_payment_chip.dart';
-import 'package:delivery_express_mobility_frontend/features/driver_shared/widgets/driver_status_toggle.dart';
 
 /// Page d'accueil refactorisée pour chauffeurs VTC
 class DriverVtcHomePage extends StatefulWidget {

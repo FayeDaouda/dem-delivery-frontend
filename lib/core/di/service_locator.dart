@@ -1,6 +1,5 @@
-import 'package:dio/dio.dart';
-import 'package:get_it/get_it.dart';
-
+import 'package:delivery_express_mobility_frontend/core/services/socket_service.dart';
+import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
 import 'package:delivery_express_mobility_frontend/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:delivery_express_mobility_frontend/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:delivery_express_mobility_frontend/features/auth/domain/repositories/auth_repository.dart';
@@ -20,8 +19,8 @@ import 'package:delivery_express_mobility_frontend/features/passes/domain/usecas
 import 'package:delivery_express_mobility_frontend/features/passes/presentation/bloc/pass_bloc.dart';
 import 'package:delivery_express_mobility_frontend/features/passes/presentation/cubit/passes_cubit.dart';
 import 'package:delivery_express_mobility_frontend/services/delivery_live_service.dart';
-import 'package:delivery_express_mobility_frontend/core/services/socket_service.dart';
-import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
 
 final getIt = GetIt.instance;
 
