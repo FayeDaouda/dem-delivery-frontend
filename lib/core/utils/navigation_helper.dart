@@ -21,27 +21,25 @@ class NavigationHelper {
 
     // DRIVER
     if (role.toUpperCase() == 'DRIVER') {
-      // DRIVER VTC -> toujours page VTC (le CTA gère activation pass)
+      // DRIVER VTC -> toujours page VTC
       if (driverType?.toUpperCase() == 'VTC') {
         return '/driver/vtc/home';
       }
 
-      // Pas de pass actif → Achat pass obligatoire
-      if (hasActivePass == false) {
-        return '/driver/passes/purchase'; // TODO: Créer page
-      }
-
-      // DRIVER MOTO avec pass actif
+      // DRIVER MOTO -> rediriger toujours vers le home livreur
+      // même si le pass n'est pas actif. L'UI gérera l'affichage
+      // du panneau d'achat/activation.
       if (driverType?.toUpperCase() == 'MOTO') {
         return '/livreurHome';
       }
 
-      // DRIVER VTC avec pass actif
-      if (driverType?.toUpperCase() == 'VTC') {
-        return '/driver/vtc/home'; // TODO: Créer page
+      // Pour les autres cas (driver sans type ou types futurs),
+      // si aucun pass actif -> rediriger vers la page d'achat.
+      if (hasActivePass == false) {
+        return '/driver/passes/purchase'; // TODO: Créer page
       }
 
-      // DRIVER sans type spécifié → Fallback livreur home
+      // Fallback pour drivers
       return '/livreurHome';
     }
 
