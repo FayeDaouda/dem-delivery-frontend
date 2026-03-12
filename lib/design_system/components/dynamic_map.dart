@@ -1,3 +1,4 @@
+import 'package:delivery_express_mobility_frontend/core/config/feature_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -143,10 +144,27 @@ class _DynamicMapState extends State<DynamicMap> {
       zoom: 15.5,
     );
 
-    await _mapController!.animateCamera(
-      CameraUpdate.newCameraPosition(cameraPosition),
-    );
+    // If mitigations are enabled, avoid frequent camera updates
+    if (FeatureFlags.mapMitigations) {
+      final now = DateTime.now();
+      // store last seen time on the controller wrapper via a map on state
+      if (_lastGoToTime != null &&
+          now.difference(_lastGoToTime!).inMilliseconds < 500) {
+        return;
+      }
+      _lastGoToTime = now;
+    }
+
+    try {
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(cameraPosition),
+      );
+    } catch (e) {
+      debugPrint('DynamicMap animateCamera error: $e');
+    }
   }
+
+  DateTime? _lastGoToTime;
 
   @override
   void dispose() {

@@ -194,7 +194,8 @@ class _LivreurHomePageContentState extends State<_LivreurHomePageContent>
 
       // Throttle frequent delivery updates to reduce UI / native pressure
       final now = DateTime.now();
-      if (now.difference(_lastDeliveryUpdate) < const Duration(milliseconds: 500)) {
+      if (now.difference(_lastDeliveryUpdate) <
+          const Duration(milliseconds: 500)) {
         return; // skip update when too frequent
       }
       _lastDeliveryUpdate = now;
