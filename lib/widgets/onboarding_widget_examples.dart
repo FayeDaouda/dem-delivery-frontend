@@ -218,7 +218,7 @@ class MyApp extends StatelessWidget {
         '/onboarding': (context) => OnboardingWidget(),
         '/login': (context) => LoginPage(),
         '/clientHome': (context) => ClientHomePage(),
-        '/livreurHome': (context) => LivreurHomePage(),
+        '/livreurHome': (context) => const DriverVtcHomePage(),
       },
     );
   }

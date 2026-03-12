@@ -61,7 +61,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<Map<String, dynamic>> sendOtp(String phone) async {
     try {
-      print('📤 [SIGNUP] POST /auth/otp/request payload: {phone: $phone}');
       final response = await dio.post(
         '/auth/otp/request',
         data: {'phone': phone},
@@ -86,19 +85,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'phone': phone,
         'code': code,
       };
-
-      print(
-        '📤 [SIGNUP] POST /auth/otp/verify payload: $payload',
-      );
       final response = await dio.post(
         '/auth/otp/verify',
         data: payload,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🌐 BACKEND RAW RESPONSE: ${response.data}');
         final normalized = _normalizeResponseData(response.data);
-        print('🔄 NORMALIZED RESPONSE: $normalized');
         return normalized;
       }
       throw Exception('Verify OTP failed with status ${response.statusCode}');
@@ -113,7 +106,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<Map<String, dynamic>> resendOtp(String phone) async {
     try {
-      print('📤 [RESEND] POST /auth/resend-otp payload: {phone: $phone}');
       final response = await dio.post(
         '/auth/resend-otp',
         data: {'phone': phone},
@@ -193,8 +185,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         payload['avatar'] = avatar.trim();
       }
 
-      print('📤 [SIGNUP] POST /auth/otp/create-profile payload: $payload');
-
       final response = await dio.post(
         '/auth/otp/create-profile',
         data: payload,
@@ -233,17 +223,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         preferredLanguage: preferredLanguage,
       );
 
-      print(
-        '📤 [SIGNUP] POST /auth/otp/create-profile payload: ${dto.toJson()}',
-      );
-
       final response = await dio.post(
         '/auth/otp/create-profile',
         data: dto.toJson(),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('🌐 CREATE PROFILE RAW RESPONSE: ${response.data}');
         return CreateProfileResponse.fromJson(response.data);
       }
       throw Exception(

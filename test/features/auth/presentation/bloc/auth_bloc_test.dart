@@ -14,6 +14,8 @@ import 'package:mockito/mockito.dart';
 ])
 import 'auth_bloc_test.mocks.dart';
 
+class MockCreateProfileUseCase extends Mock implements CreateProfileUseCase {}
+
 void main() {
   late AuthBloc authBloc;
   late MockLoginUseCase mockLoginUseCase;
@@ -102,9 +104,18 @@ void main() {
       build: () {
         when(mockVerifyOtpUseCase.call('+221770000000', '1234')).thenAnswer(
           (_) async => {
-            'role': 'DRIVER',
+            'nextStep': 'COMPLETE',
             'data': {
-              'user': {'fullName': 'Driver Test'}
+              'accessToken': 'token_access',
+              'refreshToken': 'token_refresh',
+              'user': {
+                'id': 'u_driver_1',
+                'fullName': 'Driver Test',
+                'phone': '+221770000000',
+                'role': 'DRIVER',
+                'driverType': 'VTC',
+                'hasActivePass': true,
+              }
             }
           },
         );
@@ -114,7 +125,13 @@ void main() {
           .add(const AuthVerifyOtpEvent(phone: '+221770000000', code: '1234')),
       expect: () => [
         const AuthLoading(),
-        const AuthSuccess(role: 'DRIVER', userName: 'Driver Test'),
+        const AuthSuccess(
+          role: 'DRIVER',
+          userName: 'Driver Test',
+          driverType: 'VTC',
+          userId: 'u_driver_1',
+          hasActivePass: true,
+        ),
       ],
     );
 

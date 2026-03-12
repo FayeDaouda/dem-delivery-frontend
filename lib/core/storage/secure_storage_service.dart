@@ -10,14 +10,12 @@ class SecureStorageService {
     required String role,
     String? driverType,
   }) async {
-    print('💾 SAVING TO STORAGE: role=$role, driverType=$driverType');
     await _storage.write(key: 'accessToken', value: accessToken);
     await _storage.write(key: 'refreshToken', value: refreshToken);
     await _storage.write(key: 'role', value: role);
     if (driverType != null) {
       await _storage.write(key: 'driverType', value: driverType);
     }
-    print('✅ SAVED TO STORAGE SUCCESSFULLY');
   }
 
   Future<String?> getAccessToken() async =>
@@ -26,7 +24,6 @@ class SecureStorageService {
       await _storage.read(key: 'refreshToken');
   Future<String?> getRole() async {
     final role = await _storage.read(key: 'role');
-    print('📖 READING ROLE FROM STORAGE: $role');
     return role;
   }
 
@@ -43,9 +40,12 @@ class SecureStorageService {
     String? passExpiresAt,
   }) async {
     await _storage.write(key: 'user_phone', value: phone);
-    if (name != null) await _storage.write(key: 'user_name', value: name);
-    if (fullName != null)
+    if (name != null) {
+      await _storage.write(key: 'user_name', value: name);
+    }
+    if (fullName != null) {
       await _storage.write(key: 'user_full_name', value: fullName);
+    }
     if (isOnline != null) {
       await _storage.write(key: 'driver_is_online', value: isOnline.toString());
     }
@@ -66,7 +66,7 @@ class SecureStorageService {
     final hasActivePass = await _storage.read(key: 'driver_has_active_pass');
     final passExpiresAt = await _storage.read(key: 'driver_pass_expires_at');
 
-    bool? _parseNullableBool(String? value) {
+    bool? parseNullableBool(String? value) {
       if (value == null) return null;
       final normalized = value.toLowerCase();
       if (normalized == 'true') return true;
@@ -79,8 +79,8 @@ class SecureStorageService {
         'phone': phone,
         'name': name,
         'fullName': fullName,
-        'isOnline': _parseNullableBool(isOnline),
-        'hasActivePass': _parseNullableBool(hasActivePass),
+        'isOnline': parseNullableBool(isOnline),
+        'hasActivePass': parseNullableBool(hasActivePass),
         'passExpiresAt': passExpiresAt,
       };
     }
@@ -94,9 +94,12 @@ class SecureStorageService {
     String? verificationDeadline,
     String? kycStatus,
   }) async {
-    if (userId != null) await _storage.write(key: 'driver_id', value: userId);
-    if (status != null)
+    if (userId != null) {
+      await _storage.write(key: 'driver_id', value: userId);
+    }
+    if (status != null) {
       await _storage.write(key: 'driver_status', value: status);
+    }
     if (verificationDeadline != null) {
       await _storage.write(
           key: 'driver_verification_deadline', value: verificationDeadline);

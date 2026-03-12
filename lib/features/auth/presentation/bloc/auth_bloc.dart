@@ -87,16 +87,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     try {
       final response = await verifyOtpUseCase(event.phone, event.code);
-      print('🔍 [AUTH_BLOC] RAW VERIFY OTP RESPONSE: $response');
 
       // Parser avec DTO amélioré qui gère les 2 cas
       final verifyResponse = VerifyOtpResponse.fromJson(response);
-      print('🔍 [AUTH_BLOC] nextStep: ${verifyResponse.nextStep}');
 
       // CAS 1: Nouveau user → Besoin de créer profil
       if (verifyResponse.isNewUser) {
-        print(
-            '✅ [AUTH_BLOC] Nouveau user détecté - Redirect vers création profil');
         emit(AuthOtpVerified(
           phone: event.phone,
           userId: verifyResponse.userId,
@@ -107,8 +103,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // CAS 2: User existant → Login direct avec tokens
       if (verifyResponse.isExistingUser && verifyResponse.user != null) {
-        print('✅ [AUTH_BLOC] User existant détecté - Login direct');
-
         final user = verifyResponse.user!;
         final driverType = user.driverType;
 
@@ -126,12 +120,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
 
       // Fallback: Format inattendu
-      print('⚠️ [AUTH_BLOC] Format de réponse inattendu');
       emit(const AuthFailure(
         message: 'Format de réponse inattendu du serveur',
       ));
     } catch (e) {
-      print('❌ [AUTH_BLOC] VERIFY OTP ERROR: $e');
       emit(AuthFailure(message: e.toString()));
     }
   }
@@ -186,8 +178,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final driverType = response.data.driverType;
       final hasActivePass = response.data.hasActivePass;
 
-      print('✅ PROFILE CRÉÉ: role=$role, driverType=$driverType');
-
       emit(AuthSuccess(
         role: role,
         userName: userName,
@@ -195,7 +185,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         hasActivePass: hasActivePass,
       ));
     } catch (e) {
-      print('❌ CREATE PROFILE OTP ERROR: $e');
       emit(AuthFailure(message: 'Erreur lors de la création du profil: $e'));
     }
   }

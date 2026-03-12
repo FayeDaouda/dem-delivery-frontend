@@ -1,7 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 enum WebSocketEventType {
   driverOnline,
@@ -73,17 +72,22 @@ abstract class SocketService {
 }
 
 class SocketServiceImpl implements SocketService {
-  WebSocketChannel? _channel;
+  io.Socket? _socket;
   final _eventController = StreamController<WebSocketEvent>.broadcast();
   final List<Map<String, dynamic>> _pendingMessages = [];
   bool _isConnected = false;
-  bool _isReconnecting = false;
-  int _reconnectAttempts = 0;
-  Timer? _reconnectTimer;
-  Timer? _heartbeatTimer;
-  String? _lastUrl;
-  String? _lastAccessToken;
-  static const int _maxReconnectAttempts = 5;
+
+  static const List<String> _knownEvents = [
+    'user:authenticated',
+    'driver:location:received',
+    'delivery:offer',
+    'delivery:accepted',
+    'delivery:picked_up',
+    'delivery:delivered',
+    'delivery:driver:location',
+    'delivery:status:changed',
+    'error',
+  ];
 
   @override
   Stream<WebSocketEvent> get events => _eventController.stream;
@@ -98,111 +102,88 @@ class SocketServiceImpl implements SocketService {
 
   @override
   Future<void> connect(String url, String accessToken) async {
-    _lastUrl = url;
-    _lastAccessToken = accessToken;
+    await disconnect();
 
-    try {
-      await disconnect();
+    final uri = Uri.parse(url);
+    final scheme = uri.scheme.isEmpty ? 'https' : uri.scheme;
+    final host = uri.host;
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    final namespace = (uri.path.isEmpty || uri.path == '/') ? '' : uri.path;
+    final baseUrl = '$scheme://$host$port$namespace';
 
-      _channel = WebSocketChannel.connect(
-        Uri.parse('$url?token=$accessToken'),
-      );
+    final options = io.OptionBuilder()
+        .setPath('/socket.io')
+        .setTransports(['websocket'])
+        .setReconnectionAttempts(10)
+        .setReconnectionDelay(1000)
+        .setReconnectionDelayMax(5000)
+        .disableAutoConnect()
+        .setQuery({'token': accessToken})
+        .build();
 
+    _socket = io.io(baseUrl, options);
+
+    _socket!.onConnect((_) {
       _isConnected = true;
-      _isReconnecting = false;
-      _reconnectAttempts = 0;
-      _startHeartbeat();
       _flushPendingMessages();
-
-      _channel?.stream.listen(
-        (dynamic message) {
-          try {
-            final json = _toJsonMap(message);
-
-            final event = WebSocketEvent.fromJson(json);
-            _eventController.add(event);
-          } catch (e) {
-            // ignore parsing failures but keep socket alive
-          }
-        },
-        onError: (error) {
-          _markDisconnected();
-          _scheduleReconnect();
-        },
-        onDone: () {
-          _markDisconnected();
-          _scheduleReconnect();
-        },
-        cancelOnError: false,
+      _eventController.add(
+        WebSocketEvent.fromJson({'event': 'connect', 'data': {}}),
       );
-    } catch (e) {
-      _markDisconnected();
-      _scheduleReconnect();
-      rethrow;
+    });
+
+    _socket!.onDisconnect((_) {
+      _isConnected = false;
+      _eventController.add(
+        WebSocketEvent.fromJson({'event': 'disconnect', 'data': {}}),
+      );
+    });
+
+    _socket!.onConnectError((error) {
+      _isConnected = false;
+      _eventController.add(
+        WebSocketEvent.fromJson({
+          'event': 'error',
+          'data': {'message': error.toString()},
+        }),
+      );
+    });
+
+    for (final eventName in _knownEvents) {
+      _socket!.on(eventName, (payload) {
+        final data = _normalizePayload(payload);
+        _eventController.add(
+          WebSocketEvent.fromJson({'event': eventName, 'data': data}),
+        );
+      });
     }
+
+    _socket!.connect();
   }
 
   @override
   Future<void> disconnect() async {
-    try {
-      _reconnectTimer?.cancel();
-      _heartbeatTimer?.cancel();
-      await _channel?.sink.close();
-      _markDisconnected();
-    } catch (e) {
-      _markDisconnected();
-    }
+    _socket?.dispose();
+    _socket = null;
+    _isConnected = false;
   }
 
   @override
   void sendMessage(Map<String, dynamic> message) {
+    final event = message['type']?.toString();
+    final data = _normalizePayload(message['data']);
+    if (event == null || event.isEmpty) return;
+
     if (_isConnected) {
-      _channel?.sink.add(jsonEncode(message));
+      _socket?.emit(event, data);
     } else {
       _pendingMessages.add(message);
     }
   }
 
-  Map<String, dynamic> _toJsonMap(dynamic message) {
-    if (message is Map<String, dynamic>) {
-      return message;
-    }
-    if (message is Map) {
-      return Map<String, dynamic>.from(message);
-    }
-    if (message is String) {
-      final decoded = jsonDecode(message);
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-      return {'type': 'unknown', 'data': {}};
-    }
-    return {'type': 'unknown', 'data': {}};
-  }
-
-  void _markDisconnected() {
-    _isConnected = false;
-    _heartbeatTimer?.cancel();
-  }
-
-  void _scheduleReconnect() {
-    if (_isReconnecting || _lastUrl == null || _lastAccessToken == null) {
-      return;
-    }
-    if (_reconnectAttempts >= _maxReconnectAttempts) return;
-
-    _isReconnecting = true;
-    _reconnectAttempts += 1;
-    final backoffSeconds = _reconnectAttempts * 2;
-
-    _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(Duration(seconds: backoffSeconds), () async {
-      _isReconnecting = false;
-      try {
-        await connect(_lastUrl!, _lastAccessToken!);
-      } catch (_) {
-        _scheduleReconnect();
-      }
-    });
+  Map<String, dynamic> _normalizePayload(dynamic payload) {
+    if (payload is Map<String, dynamic>) return payload;
+    if (payload is Map) return Map<String, dynamic>.from(payload);
+    return {'value': payload};
   }
 
   void _flushPendingMessages() {
@@ -214,21 +195,9 @@ class SocketServiceImpl implements SocketService {
     }
   }
 
-  void _startHeartbeat() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 25), (_) {
-      if (_isConnected) {
-        sendMessage({
-          'type': 'ping',
-          'data': {'timestamp': DateTime.now().toIso8601String()},
-        });
-      }
-    });
-  }
-
   void dispose() {
     _eventController.close();
-    _reconnectTimer?.cancel();
-    _heartbeatTimer?.cancel();
+    _socket?.dispose();
+    _socket = null;
   }
 }

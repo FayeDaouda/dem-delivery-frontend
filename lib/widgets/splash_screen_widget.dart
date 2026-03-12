@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../core/di/service_locator.dart';
 import '../core/storage/secure_storage_service.dart';
@@ -27,7 +28,7 @@ class SplashScreenWidget extends StatefulWidget {
   /// Route vers le home driver (par défaut '/livreurHome')
   final String driverHomeRoute;
 
-  /// Chemin vers l'image du logo (par défaut 'assets/images/logo.png')
+  /// Chemin vers l'image du logo (par défaut 'assets/images/logoo.png')
   final String logoPath;
 
   /// Durée de l'animation en millisecondes (par défaut 1500)
@@ -42,7 +43,7 @@ class SplashScreenWidget extends StatefulWidget {
     this.loginRoute = '/login',
     this.clientHomeRoute = '/clientHome',
     this.driverHomeRoute = '/livreurHome',
-    this.logoPath = 'assets/images/logo.png',
+    this.logoPath = 'assets/images/logoo.png',
     this.animationDuration = 1500,
     this.backgroundColor,
   });
@@ -71,17 +72,24 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
       duration: Duration(milliseconds: widget.animationDuration),
     );
 
-    // Animation de scale (zoom avec rebond)
+    // Animation de scale (zoom avec rebond élastique)
     _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.7, end: 1.1), weight: 60),
-      TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.15), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.15, end: 0.95), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 25),
     ]).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
     );
 
-    // Animation de fade (apparition progressive)
+    // Animation de fade (apparition progressive avec accélération)
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+      ),
     );
 
     // Démarrer l'animation puis vérifier l'authentification
@@ -193,7 +201,7 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.shortestSide > 600;
-    final logoSize = isTablet ? 250.0 : 160.0;
+    final logoSize = isTablet ? 180.0 : 120.0;
 
     return Scaffold(
       backgroundColor: widget.backgroundColor ?? Colors.white,
@@ -202,20 +210,34 @@ class _SplashScreenWidgetState extends State<SplashScreenWidget>
           opacity: _fadeAnimation,
           child: ScaleTransition(
             scale: _scaleAnimation,
-            child: Image.asset(
-              widget.logoPath,
-              width: logoSize,
-              height: logoSize,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                // Si l'image ne charge pas, afficher un logo de secours
-                return Icon(
-                  Icons.local_shipping,
-                  size: logoSize,
-                  color: const Color(0xFF29B6F6),
-                );
-              },
-            ),
+            child: widget.logoPath.toLowerCase().endsWith('.svg')
+                ? SvgPicture.asset(
+                    widget.logoPath,
+                    width: logoSize,
+                    height: logoSize,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (_) => SizedBox(
+                      width: logoSize,
+                      height: logoSize,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : Image.asset(
+                    widget.logoPath,
+                    width: logoSize,
+                    height: logoSize,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Si l'image ne charge pas, afficher un logo de secours
+                      return Icon(
+                        Icons.local_shipping,
+                        size: logoSize,
+                        color: const Color(0xFF29B6F6),
+                      );
+                    },
+                  ),
           ),
         ),
       ),

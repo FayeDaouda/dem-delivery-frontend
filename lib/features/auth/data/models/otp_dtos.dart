@@ -264,7 +264,7 @@ class UserProfileData {
   });
 
   factory UserProfileData.fromJson(Map<String, dynamic> json) {
-    bool _toBool(dynamic value) {
+    bool toBool(dynamic value) {
       if (value is bool) return value;
       if (value is num) return value != 0;
       if (value is String) return value.toLowerCase() == 'true';
@@ -286,12 +286,12 @@ class UserProfileData {
       driverType: json['driverType'] as String?,
       driverAvailabilityStatus: json['driverAvailabilityStatus']?.toString(),
       status: json['status']?.toString() ?? 'ACTIVE',
-      isVerified: _toBool(json['isVerified']),
+      isVerified: toBool(json['isVerified']),
       hasActivePass: json['hasActivePass'] is bool
           ? json['hasActivePass'] as bool
           : (json['hasActivePass'] == null
               ? null
-              : _toBool(json['hasActivePass'])),
+              : toBool(json['hasActivePass'])),
       createdAt: json['createdAt'] as String?,
     );
   }

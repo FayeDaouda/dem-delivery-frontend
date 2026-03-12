@@ -1,10 +1,10 @@
 import 'package:delivery_express_mobility_frontend/core/services/socket_service.dart';
+import 'package:delivery_express_mobility_frontend/features/auth/presentation/pages/onboarding_page.dart';
 import 'package:delivery_express_mobility_frontend/features/deliveries/data/datasources/deliveries_local_data_source.dart';
 import 'package:delivery_express_mobility_frontend/features/deliveries/data/datasources/deliveries_remote_data_source.dart';
 import 'package:delivery_express_mobility_frontend/features/deliveries/data/models/delivery_model.dart';
 import 'package:delivery_express_mobility_frontend/features/deliveries/data/repositories/deliveries_repository_impl.dart';
 import 'package:delivery_express_mobility_frontend/features/deliveries/domain/entities/delivery.dart';
-import 'package:delivery_express_mobility_frontend/pages/onboarding_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,20 +49,25 @@ void main() {
       expect(event.data['delivery_id'], 'd55');
     });
 
-    testWidgets('Onboarding persists selected role', (tester) async {
+    testWidgets('Onboarding persists completion flag', (tester) async {
       SharedPreferences.setMockInitialValues({});
 
       await tester.pumpWidget(
-        const MaterialApp(home: OnboardingPage()),
+        MaterialApp(
+          home: const OnboardingPage(),
+          routes: {
+            '/login': (_) => const Scaffold(body: SizedBox.shrink()),
+          },
+        ),
       );
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('Choisissez votre profil'), findsOneWidget);
-      await tester.tap(find.text('Je suis Client'));
+      expect(find.text('Bienvenue !'), findsOneWidget);
+      await tester.tap(find.text('Commencer'));
       await tester.pump(const Duration(milliseconds: 300));
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('selected_role'), 'CLIENT');
+      expect(prefs.getBool('hasSeenOnboarding'), true);
     });
   });
 }

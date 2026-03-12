@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:delivery_express_mobility_frontend/features/deliveries/domain/entities/delivery.dart';
+import 'package:delivery_express_mobility_frontend/features/deliveries/domain/repositories/deliveries_repository.dart';
 import 'package:dio/dio.dart';
 
 /// Modèle pour une livraison disponible
@@ -28,14 +30,17 @@ class DeliveryLiveService {
   StreamSubscription<List<AvailableDelivery>>? _subscription;
   Timer? _pollingTimer;
   final Dio? _dio;
+  final DeliveriesRepository? _deliveriesRepository;
   final String? _backendUrl;
   final bool _useRealBackend;
 
   DeliveryLiveService({
     Dio? dio,
+    DeliveriesRepository? deliveriesRepository,
     String? backendUrl,
     bool useRealBackend = false,
   })  : _dio = dio,
+        _deliveriesRepository = deliveriesRepository,
         _backendUrl = backendUrl,
         _useRealBackend = useRealBackend;
 
@@ -45,6 +50,11 @@ class DeliveryLiveService {
   /// Démarrer l'écoute des livraisons
   void startListening() {
     stopListening();
+
+    if (_deliveriesRepository != null) {
+      _startPollingSharedRepository();
+      return;
+    }
 
     if (_useRealBackend && _dio != null && _backendUrl != null) {
       _startPollingBackend();
@@ -85,6 +95,41 @@ class DeliveryLiveService {
         // Ou basculer vers simulation
       }
     });
+  }
+
+  /// Polling via repository partagé toutes les 10 secondes
+  void _startPollingSharedRepository() {
+    _pollingTimer?.cancel();
+
+    Future<void> fetchAndPush() async {
+      try {
+        final deliveries = await _deliveriesRepository!.fetchDeliveries();
+        final mapped = deliveries
+            .where((delivery) =>
+                delivery.status.toUpperCase() == 'PENDING' ||
+                delivery.status.toUpperCase() == 'IN_PROGRESS')
+            .map(_mapFromSharedDelivery)
+            .toList();
+        _deliveryController.add(mapped);
+      } catch (_) {
+        // Erreur silencieuse: on garde le stream vivant
+      }
+    }
+
+    fetchAndPush();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await fetchAndPush();
+    });
+  }
+
+  AvailableDelivery _mapFromSharedDelivery(Delivery delivery) {
+    return AvailableDelivery(
+      id: delivery.id,
+      distance: delivery.distance ?? 0.0,
+      price: delivery.amount.round(),
+      pickupAddress: delivery.pickupAddress,
+      dropoffAddress: delivery.deliveryAddress,
+    );
   }
 
   /// Simulation des livraisons (sera remplacé par WebSocket)

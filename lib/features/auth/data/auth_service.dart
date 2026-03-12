@@ -17,14 +17,12 @@ class AuthService {
         '/auth/otp/request',
         data: dto.toJson(),
       );
-      print("🔔 SEND OTP RESPONSE: ${response.statusCode} / ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return RequestOtpResponse.fromJson(response.data);
       }
       throw Exception('Failed to send OTP: ${response.statusCode}');
     } catch (e) {
-      print("❌ SEND OTP ERROR: $e");
       rethrow;
     }
   }
@@ -37,14 +35,12 @@ class AuthService {
         '/auth/otp/verify',
         data: dto.toJson(),
       );
-      print("✅ VERIFY OTP RESPONSE: ${response.statusCode} / ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return VerifyOtpResponse.fromJson(response.data);
       }
       throw Exception('Failed to verify OTP: ${response.statusCode}');
     } catch (e) {
-      print("❌ VERIFY OTP ERROR: $e");
       rethrow;
     }
   }
@@ -73,8 +69,6 @@ class AuthService {
         '/auth/otp/create-profile',
         data: dto.toJson(),
       );
-      print(
-          "🎉 CREATE PROFILE RESPONSE: ${response.statusCode} / ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final profileResponse = CreateProfileResponse.fromJson(response.data);
@@ -94,7 +88,6 @@ class AuthService {
       }
       throw Exception('Failed to create profile: ${response.statusCode}');
     } catch (e) {
-      print("❌ CREATE PROFILE ERROR: $e");
       rethrow;
     }
   }
@@ -106,7 +99,6 @@ class AuthService {
         'phone': phone,
         'password': password,
       });
-      print("LOGIN RESPONSE: ${response.statusCode} / ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final accessToken = response.data['data']['accessToken'];
@@ -122,7 +114,7 @@ class AuthService {
         return role;
       }
     } catch (e) {
-      print("LOGIN ERROR: $e");
+      return null;
     }
     return null;
   }

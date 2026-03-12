@@ -35,6 +35,7 @@ class DeliveryModel extends Delivery {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
