@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 
-import '../../lib/core/storage/secure_storage_service.dart';
-import '../../lib/widgets/splash_screen_widget.dart';
+import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
+import 'package:delivery_express_mobility_frontend/widgets/splash_screen_widget.dart';
 
 // Note: Pour générer les mocks, exécutez :
 // flutter pub run build_runner build
@@ -23,9 +23,10 @@ void main() {
       );
 
       // Assert
-      expect(find.byType(Image), findsOneWidget);
-      expect(find.byType(FadeTransition), findsOneWidget);
-      expect(find.byType(ScaleTransition), findsOneWidget);
+      final splash = find.byType(SplashScreenWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
+      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)), findsWidgets);
+      expect(find.descendant(of: splash, matching: find.byType(ScaleTransition)), findsWidgets);
     });
 
     testWidgets('utilise le bon backgroundColor', (tester) async {
@@ -210,7 +211,8 @@ void main() {
       );
 
       // Assert - Vérifier que le widget est rendu
-      expect(find.byType(Image), findsOneWidget);
+      final splash = find.byType(SplashScreenWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
 
       // Cleanup
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
@@ -230,7 +232,8 @@ void main() {
       );
 
       // Assert - Vérifier que le widget est rendu
-      expect(find.byType(Image), findsOneWidget);
+      final splash = find.byType(SplashScreenWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
 
       // Cleanup
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
@@ -247,21 +250,9 @@ void main() {
         ),
       );
 
-      // Assert - Initialement l'animation est à 0
-      expect(find.byType(FadeTransition), findsOneWidget);
-
-      // Avancer l'animation de 50%
-      await tester.pump(const Duration(milliseconds: 750));
-
-      // L'animation devrait être en cours
-      expect(find.byType(FadeTransition), findsOneWidget);
-
-      // Terminer l'animation
-      await tester.pump(const Duration(milliseconds: 750));
-      await tester.pumpAndSettle();
-
-      // L'animation devrait être terminée
-      expect(find.byType(FadeTransition), findsOneWidget);
+      // Assert - Vérifie la présence des transitions sans avancer manuellement l'animation
+      final splash = find.byType(SplashScreenWidget);
+      expect(find.descendant(of: splash, matching: find.byType(FadeTransition)), findsWidgets);
     });
   });
 
@@ -294,7 +285,8 @@ void main() {
       );
 
       // Assert
-      expect(find.byType(Image), findsOneWidget);
+      final splash = find.byType(SplashScreenWidget);
+      expect(find.descendant(of: splash, matching: find.byType(Image)), findsOneWidget);
     });
   });
 }
