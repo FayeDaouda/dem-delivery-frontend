@@ -1,6 +1,8 @@
 import 'package:delivery_express_mobility_frontend/core/di/service_locator.dart';
 import 'package:delivery_express_mobility_frontend/core/storage/secure_storage_service.dart';
 import 'package:delivery_express_mobility_frontend/design_system/index.dart';
+import 'package:delivery_express_mobility_frontend/core/config/feature_flags.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:delivery_express_mobility_frontend/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoadingHistory = false;
   bool _isOnline = false;
   bool _isUpdatingOnline = false;
+  bool _mapMitigationsEnabled = FeatureFlags.mapMitigations;
 
   @override
   void initState() {
@@ -45,6 +48,17 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = await _storage.getUser();
       final role = await _storage.getRole();
       final driverType = await _storage.getDriverType();
+
+      // Charger préférence map mitigations
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.containsKey('map_mitigations_enabled')) {
+          _mapMitigationsEnabled = prefs.getBool('map_mitigations_enabled')!;
+          FeatureFlags.mapMitigations = _mapMitigationsEnabled;
+        }
+      } catch (_) {
+        // ignore
+      }
 
       if (mounted) {
         setState(() {
@@ -285,6 +299,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   // Informations
                   _buildInfoCard(),
+
+                  const SizedBox(height: DEMSpacing.lg),
+                  _buildDebugSettingsCard(),
 
                   const SizedBox(height: DEMSpacing.lg),
 
@@ -839,6 +856,55 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDebugSettingsCard() {
+    return Container(
+      padding: const EdgeInsets.all(DEMSpacing.lg),
+      decoration: BoxDecoration(
+        color: DEMColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: DEMColors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Paramètres avancés',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: DEMColors.gray900,
+            ),
+          ),
+          const SizedBox(height: DEMSpacing.md),
+          const Divider(),
+          const SizedBox(height: DEMSpacing.sm),
+          SwitchListTile(
+            title: const Text('Mitigations Google Maps'),
+            subtitle: const Text(
+                'Débounce/try-catch et throttling pour améliorer la stabilité des cartes.'),
+            value: _mapMitigationsEnabled,
+            onChanged: (v) async {
+              setState(() => _mapMitigationsEnabled = v);
+              FeatureFlags.mapMitigations = v;
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('map_mitigations_enabled', v);
+              } catch (_) {
+                // ignore
+              }
+            },
+          ),
         ],
       ),
     );
